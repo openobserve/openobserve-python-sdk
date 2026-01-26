@@ -17,22 +17,19 @@ To generate the auth token:
     echo -n "root@example.com:Complexpass#123" | base64
 """
 
-import os
 from openobserve_sdk import openobserve_init, openobserve_shutdown
 from opentelemetry import trace
 from opentelemetry.instrumentation.openai import OpenAIInstrumentor
+OpenAIInstrumentor().instrument()
 from openai import OpenAI
+from dotenv import load_dotenv
 
+load_dotenv()
+openobserve_init()
 
 def main():
-    # Initialize OpenObserve SDK from environment variables
-    openobserve_init()
-
-    # Instrument OpenAI library
-    OpenAIInstrumentor().instrument()
-
     # Create OpenAI client
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    client = OpenAI()
 
     # Get a tracer for custom spans
     tracer = trace.get_tracer(__name__)
