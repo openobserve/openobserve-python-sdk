@@ -267,9 +267,6 @@ def openobserve_init(
             atexit.register(_auto_shutdown)
             _atexit_registered = True
 
-        print("✓ OpenObserve SDK initialized")
-        print(f"  Endpoint: {config.get_otlp_endpoint()}")
-
         return _tracer_provider
 
 

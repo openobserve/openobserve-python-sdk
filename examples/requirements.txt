@@ -1,0 +1,26 @@
+# Requirements for running examples in this directory
+# Install with: pip install -r examples/requirements.txt
+
+# Core project dependency (install from parent directory with: pip install -e ..)
+# openobserve>=0.1.0
+
+# LangChain packages for qa_chain.py example
+langchain>=0.3.0
+langchain-community>=0.3.0
+langchain-text-splitters>=0.3.0
+langchain-openai>=0.2.0
+langchain-core>=0.3.0
+langchain-classic>=0.1.0
+
+# PDF processing
+pypdf>=3.0.0
+
+# Environment variables management
+python-dotenv>=1.0.0
+
+# Observability and tracing
+langfuse>=2.0.0
+opentelemetry-instrumentation-langchain>=0.1.0
+
+# OpenAI API (required for embeddings and chat models)
+openai>=1.0.0
