@@ -10,13 +10,12 @@ import threading
 from typing import Optional
 
 from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 
 from .config import OpenObserveConfig
-
 
 # Global state for singleton pattern
 _tracer_provider: Optional[TracerProvider] = None
@@ -75,7 +74,9 @@ class OpenObserveClient:
         if self.config.resource_attributes:
             resource_attributes.update(self.config.resource_attributes)
 
-        resource = Resource.create(resource_attributes) if resource_attributes else Resource.get_empty()
+        resource = (
+            Resource.create(resource_attributes) if resource_attributes else Resource.get_empty()
+        )
 
         # 2. Create TracerProvider
         self._tracer_provider = TracerProvider(resource=resource)
@@ -134,9 +135,7 @@ class OpenObserveClient:
             RuntimeError: If client is not initialized
         """
         if not self._initialized or self._tracer_provider is None:
-            raise RuntimeError(
-                "OpenObserve client not initialized. Call initialize() first."
-            )
+            raise RuntimeError("OpenObserve client not initialized. Call initialize() first.")
 
         return self._tracer_provider.get_tracer(name, version)
 
@@ -268,7 +267,7 @@ def openobserve_init(
             atexit.register(_auto_shutdown)
             _atexit_registered = True
 
-        print(f"✓ OpenObserve SDK initialized")
+        print("✓ OpenObserve SDK initialized")
         print(f"  Endpoint: {config.get_otlp_endpoint()}")
 
         return _tracer_provider

@@ -29,14 +29,13 @@ Usage:
 __version__ = "0.1.0"
 
 from .client import (
+    OpenObserveClient,
+    get_tracer_provider,
+    is_initialized,
+    openobserve_flush,
     openobserve_init,
     openobserve_shutdown,
-    openobserve_flush,
-    is_initialized,
-    get_tracer_provider,
-    OpenObserveClient,
 )
-
 from .config import OpenObserveConfig
 
 __all__ = [

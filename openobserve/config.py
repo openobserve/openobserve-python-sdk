@@ -6,9 +6,8 @@ including environment variables and default values.
 """
 
 import os
-from dataclasses import dataclass, field
-from typing import Optional, Dict
-
+from dataclasses import dataclass
+from typing import Dict, Optional
 
 # Environment variable names
 ENV_OPENOBSERVE_URL = "OPENOBSERVE_URL"

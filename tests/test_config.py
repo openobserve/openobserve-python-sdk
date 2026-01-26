@@ -2,9 +2,9 @@
 Tests for configuration module
 """
 
-import os
 import pytest
-from openobserve.config import OpenObserveConfig, ENV_OPENOBSERVE_URL
+
+from openobserve.config import OpenObserveConfig
 
 
 def test_config_creation_with_required_params():
@@ -113,10 +113,7 @@ def test_config_from_env_with_overrides(monkeypatch):
     monkeypatch.setenv("OPENOBSERVE_USER", "envuser@example.com")
     monkeypatch.setenv("OPENOBSERVE_PASSWORD", "envpass")
 
-    config = OpenObserveConfig.from_env(
-        url="http://override:5080",
-        service_name="override-service"
-    )
+    config = OpenObserveConfig.from_env(url="http://override:5080", service_name="override-service")
 
     assert config.url == "http://override:5080"  # overridden
     assert config.org == "envorg"  # from env
