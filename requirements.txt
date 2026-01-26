@@ -1,0 +1,15 @@
+# Core dependencies
+opentelemetry-api>=1.20.0
+opentelemetry-sdk>=1.20.0
+opentelemetry-exporter-otlp-proto-http>=1.20.0
+
+# Development dependencies (optional)
+# pytest>=7.0.0
+# pytest-cov>=4.0.0
+# black>=22.0.0
+# isort>=5.10.0
+# mypy>=0.990
+
+# OpenAI integration (optional)
+# openai>=1.0.0
+# opentelemetry-instrumentation-openai>=0.18.0
