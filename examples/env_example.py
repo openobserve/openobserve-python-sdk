@@ -14,7 +14,7 @@ To generate the auth token:
     echo -n "root@example.com:Complexpass#123" | base64
 """
 
-from openobserve_sdk import openobserve_init, openobserve_shutdown
+from openobserve_sdk import openobserve_init
 from opentelemetry import trace
 import time
 
@@ -55,9 +55,7 @@ def main():
 
     print("\n✓ Processing completed!")
     print("  Check OpenObserve dashboard for traces")
-
-    # Shutdown
-    openobserve_shutdown()
+    print("\n  Note: Spans will be automatically flushed on program exit")
 
 
 if __name__ == "__main__":

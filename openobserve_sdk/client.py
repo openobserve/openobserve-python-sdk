@@ -5,6 +5,7 @@ This module provides the core client functionality for initializing
 OpenTelemetry with OpenObserve as the backend.
 """
 
+import atexit
 import threading
 from typing import Optional
 
@@ -21,6 +22,7 @@ from .config import OpenObserveConfig
 _tracer_provider: Optional[TracerProvider] = None
 _initialized: bool = False
 _lock = threading.RLock()
+_atexit_registered: bool = False
 
 
 class OpenObserveClient:
@@ -223,8 +225,11 @@ def openobserve_init(
         >>> with tracer.start_as_current_span("my-operation"):
         ...     # Your code here
         ...     pass
+        >>>
+        >>> # No need to call openobserve_shutdown() explicitly!
+        >>> # The SDK will automatically flush and shutdown on program exit.
     """
-    global _tracer_provider, _initialized
+    global _tracer_provider, _initialized, _atexit_registered
 
     with _lock:
         if _initialized:
@@ -258,23 +263,50 @@ def openobserve_init(
         _tracer_provider = client.initialize()
         _initialized = True
 
+        # Register automatic shutdown on program exit
+        if not _atexit_registered:
+            atexit.register(_auto_shutdown)
+            _atexit_registered = True
+
         print(f"✓ OpenObserve SDK initialized")
         print(f"  Endpoint: {config.get_otlp_endpoint()}")
 
         return _tracer_provider
 
 
-def openobserve_shutdown(timeout_millis: int = 30000) -> bool:
+def _auto_shutdown() -> None:
+    """
+    Internal function called automatically on program exit via atexit.
+
+    This ensures all pending spans are flushed before the program terminates.
+    """
+    global _atexit_registered
+
+    # Unregister to prevent duplicate calls
+    if _atexit_registered:
+        atexit.unregister(_auto_shutdown)
+        _atexit_registered = False
+
+    # Perform shutdown silently (no print statements)
+    openobserve_shutdown(silent=True)
+
+
+def openobserve_shutdown(timeout_millis: int = 30000, silent: bool = False) -> bool:
     """
     Shutdown the OpenObserve SDK and flush remaining spans.
 
+    Note: This function is called automatically on program exit via atexit.
+    You typically don't need to call this manually unless you want to explicitly
+    control when the SDK shuts down.
+
     Args:
         timeout_millis: Timeout in milliseconds (default: 30000)
+        silent: If True, suppress output messages (default: False)
 
     Returns:
         True if shutdown was successful
     """
-    global _tracer_provider, _initialized
+    global _tracer_provider, _initialized, _atexit_registered
 
     with _lock:
         if not _initialized or _tracer_provider is None:
@@ -284,7 +316,13 @@ def openobserve_shutdown(timeout_millis: int = 30000) -> bool:
         _tracer_provider = None
         _initialized = False
 
-        print("✓ OpenObserve SDK shutdown complete")
+        # Unregister atexit handler to prevent duplicate shutdown
+        if _atexit_registered:
+            atexit.unregister(_auto_shutdown)
+            _atexit_registered = False
+
+        if not silent:
+            print("✓ OpenObserve SDK shutdown complete")
         return result
 
 

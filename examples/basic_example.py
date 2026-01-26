@@ -14,7 +14,7 @@ To generate the auth token:
 """
 
 import time
-from openobserve_sdk import openobserve_init, openobserve_shutdown
+from openobserve_sdk import openobserve_init
 from opentelemetry import trace
 
 
@@ -88,9 +88,7 @@ def main():
     print("\n✓ All examples completed!")
     print("  Check OpenObserve dashboard for traces")
     print("  Navigate to: Traces -> Select 'basic-demo-service'")
-
-    # Shutdown to flush remaining spans
-    openobserve_shutdown()
+    print("\n  Note: Spans will be automatically flushed on program exit")
 
 
 if __name__ == "__main__":

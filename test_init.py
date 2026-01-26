@@ -87,6 +87,8 @@ def main():
             time.sleep(0.05)
 
     # Shutdown and flush
+    # Note: This is optional - SDK will automatically shutdown on exit
+    # We call it explicitly here for immediate verification in tests
     print("\n" + "=" * 60)
     print("Shutting down SDK...")
     print("=" * 60)
