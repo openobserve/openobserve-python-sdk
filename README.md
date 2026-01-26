@@ -19,7 +19,7 @@ export OPENOBSERVE_AUTH_TOKEN="Basic cm9vdEBleGFtcGxlLmNvbTpDb21wbGV4cGFzczEyMz=
 
 **Use in code:**
 ```python
-from openobserve_sdk import openobserve_init
+from openobserve import openobserve_init
 from opentelemetry import trace
 
 # Initialize from environment variables

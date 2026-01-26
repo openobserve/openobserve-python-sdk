@@ -3,7 +3,7 @@ requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "openobserve-sdk"
+name = "openobserve"
 version = "0.1.0"
 description = "A simple Python SDK for exporting OpenTelemetry traces to OpenObserve"
 readme = "README.md"
@@ -54,7 +54,7 @@ Repository = "https://github.com/your-org/openobserve-python-sdk"
 "Bug Tracker" = "https://github.com/your-org/openobserve-python-sdk/issues"
 
 [tool.setuptools]
-packages = ["openobserve_sdk"]
+packages = ["openobserve"]
 
 [tool.black]
 line-length = 100

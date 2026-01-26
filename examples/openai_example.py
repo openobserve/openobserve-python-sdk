@@ -17,7 +17,7 @@ To generate the auth token:
     echo -n "root@example.com:Complexpass#123" | base64
 """
 
-from openobserve_sdk import openobserve_init
+from openobserve import openobserve_init
 from opentelemetry import trace
 from opentelemetry.instrumentation.openai import OpenAIInstrumentor
 OpenAIInstrumentor().instrument()

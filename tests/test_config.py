@@ -4,7 +4,7 @@ Tests for configuration module
 
 import os
 import pytest
-from openobserve_sdk.config import OpenObserveConfig, ENV_OPENOBSERVE_URL
+from openobserve.config import OpenObserveConfig, ENV_OPENOBSERVE_URL
 
 
 def test_config_creation_with_required_params():

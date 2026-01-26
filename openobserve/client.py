@@ -211,7 +211,7 @@ def openobserve_init(
         RuntimeError: If already initialized
 
     Example:
-        >>> from openobserve_sdk import openobserve_init
+        >>> from openobserve import openobserve_init
         >>> from opentelemetry import trace
         >>>
         >>> # Recommended: Use environment variables

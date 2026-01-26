@@ -13,7 +13,7 @@ Usage:
         echo -n "user@example.com:password" | base64
 
     Then initialize the SDK:
-        >>> from openobserve_sdk import openobserve_init
+        >>> from openobserve import openobserve_init
         >>> from opentelemetry import trace
         >>>
         >>> # Initialize from environment variables
