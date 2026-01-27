@@ -15,21 +15,32 @@ echo -n "root@example.com:Complexpass#123" | base64
 export OPENOBSERVE_URL="http://localhost:5080"
 export OPENOBSERVE_ORG="default"
 export OPENOBSERVE_AUTH_TOKEN="Basic cm9vdEBleGFtcGxlLmNvbTpDb21wbGV4cGFzczEyMz=="
+export OPENAI_API_KEY="your-api-key"
 ```
 
-**Use in code:**
-```python
-from openobserve import openobserve_init
-from opentelemetry import trace
+**Install dependencies:**
+```bash
+pip install openai opentelemetry-instrumentation-openai
+```
 
-# Initialize from environment variables
+**Use with OpenAI:**
+```python
+from opentelemetry.instrumentation.openai import OpenAIInstrumentor
+from openobserve import openobserve_init
+
+# Initialize OpenObserve and instrument OpenAI
+OpenAIInstrumentor().instrument()
 openobserve_init()
 
-# Use OpenTelemetry
-tracer = trace.get_tracer(__name__)
-with tracer.start_as_current_span("my-operation"):
-    # Your code here
-    pass
+from openai import OpenAI
+
+# Use OpenAI as normal - traces are automatically captured
+client = OpenAI()
+response = client.chat.completions.create(
+    model="gpt-3.5-turbo",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+print(response.choices[0].message.content)
 ```
 
 ## Environment Variables
