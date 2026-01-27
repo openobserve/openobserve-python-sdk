@@ -1,6 +1,7 @@
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_openai import OpenAIEmbeddings
+from langchain_anthropic import ChatAnthropic
 from langchain_community.vectorstores import InMemoryVectorStore
 from langchain_classic.chains import create_retrieval_chain
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
@@ -26,7 +27,7 @@ embeddings = OpenAIEmbeddings()
 vectorstore = InMemoryVectorStore.from_documents(documents=splits, embedding=embeddings)
 
 # Build QA chain
-llm = ChatOpenAI(model="gpt-4")
+llm = ChatAnthropic(model="claude-sonnet-4-5-20250929")
 prompt = ChatPromptTemplate.from_messages([
    ("system", "Use the given context to answer the question. If you don't know the answer, say you don't know. Keep the answer concise.\n\n{context}"),
    ("human", "{input}"),
