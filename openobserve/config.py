@@ -25,8 +25,8 @@ class OpenObserveConfig:
     Configuration for OpenObserve SDK.
 
     Attributes:
-        url: OpenObserve base URL (e.g., "https://api.openobserve.ai" or "http://localhost:5080")
-        org: OpenObserve organization name
+        url: OpenObserve base URL (default: "http://localhost:5080")
+        org: OpenObserve organization name (default: "default")
         auth_token: Authorization token (e.g., "Basic <base64-encoded-credentials>")
         timeout: Request timeout in seconds (default: 30)
         enabled: Enable/disable tracing (default: True)
@@ -81,7 +81,7 @@ class OpenObserveConfig:
             ValueError: If required environment variables are missing
         """
         # Read from environment with overrides taking precedence
-        url = overrides.get("url") or os.getenv(ENV_OPENOBSERVE_URL)
+        url = overrides.get("url") or os.getenv(ENV_OPENOBSERVE_URL, "http://localhost:5080")
         org = overrides.get("org") or os.getenv(ENV_OPENOBSERVE_ORG, "default")
         auth_token = overrides.get("auth_token") or os.getenv(ENV_OPENOBSERVE_AUTH_TOKEN)
 

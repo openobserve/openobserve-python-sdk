@@ -229,3 +229,15 @@ def test_config_stream_name_from_env(monkeypatch):
     config = OpenObserveConfig.from_env()
 
     assert config.stream_name == "my-stream"
+
+
+def test_config_from_env_with_defaults(monkeypatch):
+    """Test that url and org use defaults when not provided in environment."""
+    # Only set auth_token, let url and org use defaults
+    monkeypatch.setenv("OPENOBSERVE_AUTH_TOKEN", "Basic dGVzdEB0ZXN0LmNvbTp0ZXN0cGFzcw==")
+
+    config = OpenObserveConfig.from_env()
+
+    assert config.url == "http://localhost:5080"  # default
+    assert config.org == "default"  # default
+    assert config.auth_token == "Basic dGVzdEB0ZXN0LmNvbTp0ZXN0cGFzcw=="
