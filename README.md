@@ -12,8 +12,11 @@ echo -n "root@example.com:Complexpass#123" | base64
 
 **Set environment variables:**
 ```bash
-export OPENOBSERVE_URL="http://localhost:5080"
-export OPENOBSERVE_ORG="default"
+# Optional (defaults shown below)
+export OPENOBSERVE_URL="http://localhost:5080"  # default
+export OPENOBSERVE_ORG="default"  # default
+
+# Required
 export OPENOBSERVE_AUTH_TOKEN="Basic cm9vdEBleGFtcGxlLmNvbTpDb21wbGV4cGFzczEyMz=="
 export OPENAI_API_KEY="your-api-key"
 ```
@@ -47,8 +50,8 @@ print(response.choices[0].message.content)
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `OPENOBSERVE_URL` | ✅ | OpenObserve base URL |
-| `OPENOBSERVE_ORG` | ✅ | Organization name (default: "default") |
+| `OPENOBSERVE_URL` | No | OpenObserve base URL (default: "http://localhost:5080") |
+| `OPENOBSERVE_ORG` | No | Organization name (default: "default") |
 | `OPENOBSERVE_AUTH_TOKEN` | ✅ | Authorization token (Format: "Basic <base64>") |
 | `OPENOBSERVE_TIMEOUT` | No | Request timeout in seconds (default: 30) |
 | `OPENOBSERVE_ENABLED` | No | Enable/disable tracing (default: "true") |
