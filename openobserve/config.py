@@ -15,6 +15,8 @@ ENV_OPENOBSERVE_ORG = "OPENOBSERVE_ORG"
 ENV_OPENOBSERVE_AUTH_TOKEN = "OPENOBSERVE_AUTH_TOKEN"
 ENV_OPENOBSERVE_TIMEOUT = "OPENOBSERVE_TIMEOUT"
 ENV_OPENOBSERVE_ENABLED = "OPENOBSERVE_ENABLED"
+ENV_OPENOBSERVE_PROTOCOL = "OPENOBSERVE_PROTOCOL"
+ENV_OPENOBSERVE_STREAM_NAME = "OPENOBSERVE_STREAM_NAME"
 
 
 @dataclass
@@ -28,6 +30,8 @@ class OpenObserveConfig:
         auth_token: Authorization token (e.g., "Basic <base64-encoded-credentials>")
         timeout: Request timeout in seconds (default: 30)
         enabled: Enable/disable tracing (default: True)
+        protocol: Protocol to use for sending traces: "grpc" or "http/protobuf" (default: "http/protobuf")
+        stream_name: Stream name for traces (default: "default")
         additional_headers: Additional HTTP headers to send with requests
         resource_attributes: Additional resource attributes for the service
     """
@@ -37,6 +41,8 @@ class OpenObserveConfig:
     auth_token: str
     timeout: int = 30
     enabled: bool = True
+    protocol: str = "http/protobuf"
+    stream_name: str = "default"
     additional_headers: Optional[Dict[str, str]] = None
     resource_attributes: Optional[Dict[str, str]] = None
 
@@ -55,6 +61,10 @@ class OpenObserveConfig:
         # Validate timeout
         if self.timeout <= 0:
             raise ValueError("Timeout must be positive")
+
+        # Validate protocol
+        if self.protocol not in ("grpc", "http/protobuf"):
+            raise ValueError("Protocol must be either 'grpc' or 'http/protobuf'")
 
     @classmethod
     def from_env(cls, **overrides) -> "OpenObserveConfig":
@@ -83,12 +93,22 @@ class OpenObserveConfig:
         enabled_str = os.getenv(ENV_OPENOBSERVE_ENABLED, "true").lower()
         enabled = overrides.get("enabled", enabled_str in ("true", "1", "yes"))
 
+        # Parse protocol from env (default to "http/protobuf")
+        protocol = overrides.get("protocol") or os.getenv(ENV_OPENOBSERVE_PROTOCOL, "http/protobuf")
+
+        # Parse stream_name from env (default to "default")
+        stream_name = overrides.get("stream_name") or os.getenv(
+            ENV_OPENOBSERVE_STREAM_NAME, "default"
+        )
+
         return cls(
             url=url,
             org=org,
             auth_token=auth_token,
             timeout=timeout,
             enabled=enabled,
+            protocol=protocol,
+            stream_name=stream_name,
             additional_headers=overrides.get("additional_headers"),
             resource_attributes=overrides.get("resource_attributes"),
         )
@@ -97,7 +117,17 @@ class OpenObserveConfig:
         """
         Get the OTLP traces endpoint URL.
 
+        For HTTP/Protobuf protocol, returns full URL with path.
+        For gRPC protocol, returns host:port format.
+
         Returns:
-            Full OTLP endpoint URL
+            OTLP endpoint URL/address
         """
-        return f"{self.url}/api/{self.org}/v1/traces"
+        if self.protocol == "grpc":
+            # For gRPC, extract host:port from URL
+            # Remove protocol prefix (http:// or https://)
+            url_without_protocol = self.url.replace("https://", "").replace("http://", "")
+            return url_without_protocol
+        else:
+            # For HTTP/Protobuf, use full path
+            return f"{self.url}/api/{self.org}/v1/traces"

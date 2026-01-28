@@ -28,10 +28,15 @@ vectorstore = InMemoryVectorStore.from_documents(documents=splits, embedding=emb
 
 # Build QA chain
 llm = ChatAnthropic(model="claude-sonnet-4-5-20250929")
-prompt = ChatPromptTemplate.from_messages([
-   ("system", "Use the given context to answer the question. If you don't know the answer, say you don't know. Keep the answer concise.\n\n{context}"),
-   ("human", "{input}"),
-])
+prompt = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "Use the given context to answer the question. If you don't know the answer, say you don't know. Keep the answer concise.\n\n{context}",
+        ),
+        ("human", "{input}"),
+    ]
+)
 
 question_answer_chain = create_stuff_documents_chain(llm, prompt)
 qa_chain = create_retrieval_chain(vectorstore.as_retriever(), question_answer_chain)
@@ -42,8 +47,8 @@ qa_chain = create_retrieval_chain(vectorstore.as_retriever(), question_answer_ch
 
 # Run the chain with Langfuse callback
 response = qa_chain.invoke(
-   {"input": "What are the main security risks discussed?"},
-   # config={"callbacks": [langfuse_handler]}
+    {"input": "What are the main security risks discussed?"},
+    # config={"callbacks": [langfuse_handler]}
 )
 
 print(response["answer"])

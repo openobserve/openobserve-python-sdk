@@ -50,14 +50,38 @@ print(response.choices[0].message.content)
 | `OPENOBSERVE_URL` | ✅ | OpenObserve base URL |
 | `OPENOBSERVE_ORG` | ✅ | Organization name (default: "default") |
 | `OPENOBSERVE_AUTH_TOKEN` | ✅ | Authorization token (Format: "Basic <base64>") |
-| `OPENOBSERVE_TIMEOUT` | No | HTTP timeout in seconds (default: 30) |
+| `OPENOBSERVE_TIMEOUT` | No | Request timeout in seconds (default: 30) |
 | `OPENOBSERVE_ENABLED` | No | Enable/disable tracing (default: "true") |
+| `OPENOBSERVE_PROTOCOL` | No | Protocol: "grpc" or "http/protobuf" (default: "http/protobuf") |
+| `OPENOBSERVE_STREAM_NAME` | No | Stream name for traces (default: "default") |
+
+### Protocol Configuration Notes
+
+**HTTP/Protobuf (default)**
+- Uses HTTP with Protocol Buffers encoding
+- Works with both HTTP and HTTPS endpoints
+- Organization is specified in the URL path: `/api/{org}/v1/traces`
+- Automatically adds `stream-name` header from `OPENOBSERVE_STREAM_NAME`
+- Standard HTTP header handling (preserves case)
+
+**gRPC**
+- Uses gRPC protocol with automatic configuration:
+  - Organization is passed as a header (not in URL)
+  - Automatically adds required headers:
+    - `organization`: Set to the value of `OPENOBSERVE_ORG`
+    - `stream-name`: Set to the value of `OPENOBSERVE_STREAM_NAME` (default: "default")
+  - Headers are normalized to lowercase per gRPC specification
+  - TLS is automatically configured based on URL scheme:
+    - `http://` URLs use insecure (non-TLS) connections
+    - `https://` URLs use secure (TLS) connections
 
 ## Installation
 
 ```bash
+# Install the SDK (includes both HTTP/Protobuf and gRPC support)
 pip install -e .
-# Or
+
+# Or using requirements.txt
 pip install -r requirements.txt
 ```
 

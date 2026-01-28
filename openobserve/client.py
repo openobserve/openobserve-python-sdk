@@ -10,10 +10,15 @@ import threading
 from typing import Optional
 
 from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+    OTLPSpanExporter as GRPCSpanExporter,
+)
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+    OTLPSpanExporter as HTTPProtobufSpanExporter,
+)
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, SpanExporter
 
 from .config import OpenObserveConfig
 
@@ -95,12 +100,12 @@ class OpenObserveClient:
 
         return self._tracer_provider
 
-    def _create_otlp_exporter(self) -> OTLPSpanExporter:
+    def _create_otlp_exporter(self) -> SpanExporter:
         """
         Create OTLP span exporter configured for OpenObserve.
 
         Returns:
-            OTLPSpanExporter instance
+            SpanExporter instance (gRPC or HTTP/Protobuf based on configuration)
         """
         # Prepare headers with authorization token
         headers = {
@@ -114,11 +119,36 @@ class OpenObserveClient:
         # Create OTLP exporter
         endpoint = self.config.get_otlp_endpoint()
 
-        return OTLPSpanExporter(
-            endpoint=endpoint,
-            headers=headers,
-            timeout=self.config.timeout,
-        )
+        # Choose exporter based on protocol configuration
+        if self.config.protocol == "grpc":
+            # For gRPC, OpenObserve requires organization and stream-name as headers
+            # (organization is not in the endpoint URL for gRPC)
+            headers["organization"] = self.config.org
+            headers["stream-name"] = self.config.stream_name
+
+            # gRPC requires lowercase metadata keys
+            lowercase_headers = {k.lower(): v for k, v in headers.items()}
+
+            # Use insecure channel for HTTP URLs (non-TLS)
+            # gRPC defaults to TLS, but plain HTTP endpoints need insecure=True
+            insecure = self.config.url.startswith("http://")
+
+            return GRPCSpanExporter(
+                endpoint=endpoint,
+                headers=tuple(lowercase_headers.items()),
+                timeout=self.config.timeout,
+                insecure=insecure,
+            )
+        else:  # http/protobuf (default)
+            # For HTTP/Protobuf, organization is in the URL path, not headers
+            # Only add stream-name header
+            headers["stream-name"] = self.config.stream_name
+
+            return HTTPProtobufSpanExporter(
+                endpoint=endpoint,
+                headers=headers,
+                timeout=self.config.timeout,
+            )
 
     def get_tracer(self, name: str = __name__, version: Optional[str] = None):
         """
@@ -174,6 +204,8 @@ def openobserve_init(
     auth_token: Optional[str] = None,
     timeout: Optional[int] = None,
     enabled: Optional[bool] = None,
+    protocol: Optional[str] = None,
+    stream_name: Optional[str] = None,
     additional_headers: Optional[dict] = None,
     resource_attributes: Optional[dict] = None,
 ) -> TracerProvider:
@@ -192,6 +224,8 @@ def openobserve_init(
                                 Example: "Basic cm9vdEBleGFtcGxlLmNvbTpDb21wbGV4cGFzczEyMz=="
         OPENOBSERVE_TIMEOUT: Request timeout in seconds (default: 30)
         OPENOBSERVE_ENABLED: Enable/disable tracing (default: "true")
+        OPENOBSERVE_PROTOCOL: Protocol to use - "grpc" or "http/protobuf" (default: "http/protobuf")
+        OPENOBSERVE_STREAM_NAME: Stream name for traces (default: "default")
 
     Args:
         url: Override OPENOBSERVE_URL (optional)
@@ -199,6 +233,8 @@ def openobserve_init(
         auth_token: Override OPENOBSERVE_AUTH_TOKEN (optional)
         timeout: Override OPENOBSERVE_TIMEOUT (optional)
         enabled: Override OPENOBSERVE_ENABLED (optional)
+        protocol: Override OPENOBSERVE_PROTOCOL - "grpc" or "http/protobuf" (optional)
+        stream_name: Override OPENOBSERVE_STREAM_NAME - stream name for traces (optional)
         additional_headers: Additional HTTP headers (optional)
         resource_attributes: Additional resource attributes (optional)
 
@@ -249,6 +285,10 @@ def openobserve_init(
             config_overrides["timeout"] = timeout
         if enabled is not None:
             config_overrides["enabled"] = enabled
+        if protocol is not None:
+            config_overrides["protocol"] = protocol
+        if stream_name is not None:
+            config_overrides["stream_name"] = stream_name
         if additional_headers is not None:
             config_overrides["additional_headers"] = additional_headers
         if resource_attributes is not None:
