@@ -7,7 +7,7 @@ A simple and lightweight Python SDK for exporting OpenTelemetry traces to [OpenO
 **Generate auth token:**
 ```bash
 echo -n "root@example.com:Complexpass#123" | base64
-# Output: cm9vdEBleGFtcGxlLmNvbTpDb21wbGV4cGFzczEyMz==
+# Output: cm9vdEBleGFtcGxlLmNvbTpDb21wbGV4cGFzcyMxMjM=
 ```
 
 **Set environment variables:**
@@ -17,13 +17,14 @@ export OPENOBSERVE_URL="http://localhost:5080"  # default
 export OPENOBSERVE_ORG="default"  # default
 
 # Required
-export OPENOBSERVE_AUTH_TOKEN="Basic cm9vdEBleGFtcGxlLmNvbTpDb21wbGV4cGFzczEyMz=="
+export OPENOBSERVE_AUTH_TOKEN="Basic cm9vdEBleGFtcGxlLmNvbTpDb21wbGV4cGFzcyMxMjM="
 export OPENAI_API_KEY="your-api-key"
+export ANTHROPIC_API_KEY="your-api-key"
 ```
 
 **Install dependencies:**
 ```bash
-pip install openai opentelemetry-instrumentation-openai
+uv pip install openai opentelemetry-instrumentation-openai
 ```
 
 **Use with OpenAI:**
@@ -82,15 +83,21 @@ print(response.choices[0].message.content)
 
 ```bash
 # Install the SDK (includes both HTTP/Protobuf and gRPC support)
-pip install -e .
+uv pip install -e .
 
 # Or using requirements.txt
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 ```
 
 ## Examples
 
 See [examples/](examples/) directory for complete examples.
+
+You can run it:
+
+```
+uv run examples/openai_example.py
+```
 
 ## License
 
