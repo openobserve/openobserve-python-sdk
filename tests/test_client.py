@@ -4,6 +4,7 @@ Tests for client module
 
 from unittest.mock import Mock, patch
 
+from openobserve import client as client_module
 from openobserve.client import OpenObserveClient
 from openobserve.config import OpenObserveConfig
 
@@ -22,7 +23,7 @@ def test_grpc_exporter_headers_are_lowercase():
 
     with patch("openobserve.client.GRPCSpanExporter") as mock_grpc_exporter:
         mock_grpc_exporter.return_value = Mock()
-        exporter = client._create_otlp_exporter()
+        client.initialize_traces()
 
         # Verify GRPCSpanExporter was called
         mock_grpc_exporter.assert_called_once()
@@ -63,7 +64,7 @@ def test_http_exporter_headers_preserve_case():
 
     with patch("openobserve.client.HTTPProtobufSpanExporter") as mock_http_exporter:
         mock_http_exporter.return_value = Mock()
-        exporter = client._create_otlp_exporter()
+        client.initialize_traces()
 
         # Verify HTTPProtobufSpanExporter was called
         mock_http_exporter.assert_called_once()
@@ -99,7 +100,7 @@ def test_grpc_exporter_endpoint():
 
     with patch("openobserve.client.GRPCSpanExporter") as mock_grpc_exporter:
         mock_grpc_exporter.return_value = Mock()
-        exporter = client._create_otlp_exporter()
+        client.initialize_traces()
 
         # Verify endpoint is host:port format for gRPC
         call_kwargs = mock_grpc_exporter.call_args[1]
@@ -119,7 +120,7 @@ def test_http_exporter_endpoint():
 
     with patch("openobserve.client.HTTPProtobufSpanExporter") as mock_http_exporter:
         mock_http_exporter.return_value = Mock()
-        exporter = client._create_otlp_exporter()
+        client.initialize_traces()
 
         # Verify endpoint is full URL with path for HTTP
         call_kwargs = mock_http_exporter.call_args[1]
@@ -139,7 +140,7 @@ def test_grpc_exporter_insecure_for_http():
 
     with patch("openobserve.client.GRPCSpanExporter") as mock_grpc_exporter:
         mock_grpc_exporter.return_value = Mock()
-        exporter = client._create_otlp_exporter()
+        client.initialize_traces()
 
         # Verify insecure=True for HTTP URLs
         call_kwargs = mock_grpc_exporter.call_args[1]
@@ -159,7 +160,7 @@ def test_grpc_exporter_secure_for_https():
 
     with patch("openobserve.client.GRPCSpanExporter") as mock_grpc_exporter:
         mock_grpc_exporter.return_value = Mock()
-        exporter = client._create_otlp_exporter()
+        client.initialize_traces()
 
         # Verify insecure=False for HTTPS URLs
         call_kwargs = mock_grpc_exporter.call_args[1]
@@ -179,7 +180,7 @@ def test_grpc_exporter_includes_organization_header():
 
     with patch("openobserve.client.GRPCSpanExporter") as mock_grpc_exporter:
         mock_grpc_exporter.return_value = Mock()
-        exporter = client._create_otlp_exporter()
+        client.initialize_traces()
 
         # Get the headers argument
         call_kwargs = mock_grpc_exporter.call_args[1]
@@ -204,7 +205,7 @@ def test_grpc_exporter_custom_stream_name():
 
     with patch("openobserve.client.GRPCSpanExporter") as mock_grpc_exporter:
         mock_grpc_exporter.return_value = Mock()
-        exporter = client._create_otlp_exporter()
+        client.initialize_traces()
 
         # Get the headers argument
         call_kwargs = mock_grpc_exporter.call_args[1]
@@ -228,7 +229,7 @@ def test_http_exporter_custom_stream_name():
 
     with patch("openobserve.client.HTTPProtobufSpanExporter") as mock_http_exporter:
         mock_http_exporter.return_value = Mock()
-        exporter = client._create_otlp_exporter()
+        client.initialize_traces()
 
         # Get the headers argument
         call_kwargs = mock_http_exporter.call_args[1]
@@ -238,3 +239,42 @@ def test_http_exporter_custom_stream_name():
         assert headers["stream-name"] == "custom-http-traces"
         # Organization should be in URL path, not headers
         assert "organization" not in headers
+
+
+def test_openobserve_init_defaults_enable_all():
+    """Calling openobserve_init() without signal flags should initialize all signals."""
+    with patch("openobserve.client._init_traces") as mock_traces, \
+        patch("openobserve.client._init_logs") as mock_logs, \
+        patch("openobserve.client._init_metrics") as mock_metrics, \
+        patch("openobserve.client._ensure_atexit"):
+        client_module.openobserve_init(auth_token="token")
+
+    mock_traces.assert_called_once()
+    mock_logs.assert_called_once()
+    mock_metrics.assert_called_once()
+
+
+def test_openobserve_init_only_logs_when_flag_set():
+    """Passing logs=True should disable other signals by default."""
+    with patch("openobserve.client._init_traces") as mock_traces, \
+        patch("openobserve.client._init_logs") as mock_logs, \
+        patch("openobserve.client._init_metrics") as mock_metrics, \
+        patch("openobserve.client._ensure_atexit"):
+        client_module.openobserve_init(auth_token="token", logs=True)
+
+    mock_logs.assert_called_once()
+    mock_traces.assert_not_called()
+    mock_metrics.assert_not_called()
+
+
+def test_openobserve_init_combines_selected_signals():
+    """Multiple explicit flags should only initialize the selected signals."""
+    with patch("openobserve.client._init_traces") as mock_traces, \
+        patch("openobserve.client._init_logs") as mock_logs, \
+        patch("openobserve.client._init_metrics") as mock_metrics, \
+        patch("openobserve.client._ensure_atexit"):
+        client_module.openobserve_init(auth_token="token", logs=True, metrics=True)
+
+    mock_logs.assert_called_once()
+    mock_metrics.assert_called_once()
+    mock_traces.assert_not_called()

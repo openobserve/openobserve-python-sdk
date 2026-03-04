@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "openobserve"
 version = "0.1.0"
-description = "A simple Python SDK for exporting OpenTelemetry traces to OpenObserve"
+description = "A simple Python SDK for exporting OpenTelemetry logs, metrics, and traces to OpenObserve"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
