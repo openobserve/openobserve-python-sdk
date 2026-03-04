@@ -17,6 +17,7 @@ ENV_OPENOBSERVE_TIMEOUT = "OPENOBSERVE_TIMEOUT"
 ENV_OPENOBSERVE_ENABLED = "OPENOBSERVE_ENABLED"
 ENV_OPENOBSERVE_PROTOCOL = "OPENOBSERVE_PROTOCOL"
 ENV_OPENOBSERVE_TRACES_STREAM_NAME = "OPENOBSERVE_TRACES_STREAM_NAME"
+ENV_OPENOBSERVE_LOGS_STREAM_NAME = "OPENOBSERVE_LOGS_STREAM_NAME"
 
 
 @dataclass
@@ -32,6 +33,7 @@ class OpenObserveConfig:
         enabled: Enable/disable tracing (default: True)
         protocol: Protocol to use for sending traces: "grpc" or "http/protobuf" (default: "http/protobuf")
         stream_name: Stream name for traces (default: "default")
+        logs_stream_name: Stream name for logs (default: "default")
         additional_headers: Additional HTTP headers to send with requests
         resource_attributes: Additional resource attributes for the service
     """
@@ -43,6 +45,7 @@ class OpenObserveConfig:
     enabled: bool = True
     protocol: str = "http/protobuf"
     stream_name: str = "default"
+    logs_stream_name: str = "default"
     additional_headers: Optional[Dict[str, str]] = None
     resource_attributes: Optional[Dict[str, str]] = None
 
@@ -101,6 +104,11 @@ class OpenObserveConfig:
             ENV_OPENOBSERVE_TRACES_STREAM_NAME, "default"
         )
 
+        # Parse logs_stream_name from env (default to "default")
+        logs_stream_name = overrides.get("logs_stream_name") or os.getenv(
+            ENV_OPENOBSERVE_LOGS_STREAM_NAME, "default"
+        )
+
         return cls(
             url=url,
             org=org,
@@ -109,25 +117,29 @@ class OpenObserveConfig:
             enabled=enabled,
             protocol=protocol,
             stream_name=stream_name,
+            logs_stream_name=logs_stream_name,
             additional_headers=overrides.get("additional_headers"),
             resource_attributes=overrides.get("resource_attributes"),
         )
 
+    def _get_grpc_endpoint(self) -> str:
+        """Get host:port for gRPC from URL."""
+        return self.url.replace("https://", "").replace("http://", "")
+
     def get_otlp_endpoint(self) -> str:
-        """
-        Get the OTLP traces endpoint URL.
-
-        For HTTP/Protobuf protocol, returns full URL with path.
-        For gRPC protocol, returns host:port format.
-
-        Returns:
-            OTLP endpoint URL/address
-        """
+        """Get the OTLP traces endpoint URL."""
         if self.protocol == "grpc":
-            # For gRPC, extract host:port from URL
-            # Remove protocol prefix (http:// or https://)
-            url_without_protocol = self.url.replace("https://", "").replace("http://", "")
-            return url_without_protocol
-        else:
-            # For HTTP/Protobuf, use full path
-            return f"{self.url}/api/{self.org}/v1/traces"
+            return self._get_grpc_endpoint()
+        return f"{self.url}/api/{self.org}/v1/traces"
+
+    def get_otlp_logs_endpoint(self) -> str:
+        """Get the OTLP logs endpoint URL."""
+        if self.protocol == "grpc":
+            return self._get_grpc_endpoint()
+        return f"{self.url}/api/{self.org}/v1/logs"
+
+    def get_otlp_metrics_endpoint(self) -> str:
+        """Get the OTLP metrics endpoint URL."""
+        if self.protocol == "grpc":
+            return self._get_grpc_endpoint()
+        return f"{self.url}/api/{self.org}/v1/metrics"

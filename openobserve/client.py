@@ -2,20 +2,37 @@
 OpenObserve SDK Client Module
 
 This module provides the core client functionality for initializing
-OpenTelemetry with OpenObserve as the backend.
+OpenTelemetry logs, metrics, and traces with OpenObserve as the backend.
 """
 
 import atexit
 import threading
 from typing import Optional
 
-from opentelemetry import trace
+from opentelemetry import metrics, trace
+from opentelemetry._logs import set_logger_provider
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import (
+    OTLPLogExporter as GRPCLogExporter,
+)
+from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (
+    OTLPMetricExporter as GRPCMetricExporter,
+)
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
     OTLPSpanExporter as GRPCSpanExporter,
+)
+from opentelemetry.exporter.otlp.proto.http._log_exporter import (
+    OTLPLogExporter as HTTPLogExporter,
+)
+from opentelemetry.exporter.otlp.proto.http.metric_exporter import (
+    OTLPMetricExporter as HTTPMetricExporter,
 )
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
     OTLPSpanExporter as HTTPProtobufSpanExporter,
 )
+from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, SpanExporter
@@ -24,178 +41,162 @@ from .config import OpenObserveConfig
 
 # Global state for singleton pattern
 _tracer_provider: Optional[TracerProvider] = None
-_initialized: bool = False
+_meter_provider: Optional[MeterProvider] = None
+_logger_provider: Optional[LoggerProvider] = None
+_initialized_signals: set = set()  # tracks which signals are initialized: "traces", "logs", "metrics"
 _lock = threading.RLock()
 _atexit_registered: bool = False
 
 
 class OpenObserveClient:
     """
-    OpenObserve client for managing OpenTelemetry tracer provider.
+    OpenObserve client for managing OpenTelemetry providers.
 
     This client handles:
-    - TracerProvider initialization and configuration
+    - TracerProvider / MeterProvider / LoggerProvider initialization
     - OTLP exporter setup with OpenObserve authentication
-    - BatchSpanProcessor configuration
-    - Global tracer provider registration
+    - Global provider registration
     """
 
     def __init__(self, config: OpenObserveConfig):
-        """
-        Initialize OpenObserve client.
-
-        Args:
-            config: OpenObserveConfig instance with connection details
-        """
         self.config = config
         self._tracer_provider: Optional[TracerProvider] = None
-        self._initialized = False
+        self._meter_provider: Optional[MeterProvider] = None
+        self._logger_provider: Optional[LoggerProvider] = None
 
-    def initialize(self) -> TracerProvider:
-        """
-        Initialize and register the OpenTelemetry tracer provider.
-
-        This method:
-        1. Creates a Resource (with custom attributes if provided)
-        2. Initializes a TracerProvider
-        3. Configures OTLP exporter with authentication
-        4. Adds a BatchSpanProcessor
-        5. Registers the provider globally
-
-        Returns:
-            TracerProvider instance
-
-        Raises:
-            RuntimeError: If already initialized or if tracing is disabled
-        """
-        if not self.config.enabled:
-            raise RuntimeError("OpenObserve tracing is disabled")
-
-        if self._initialized:
-            raise RuntimeError("OpenObserve client already initialized")
-
-        # 1. Create resource with custom attributes if provided
+    def _build_resource(self) -> Resource:
         resource_attributes = {}
         if self.config.resource_attributes:
             resource_attributes.update(self.config.resource_attributes)
+        return Resource.create(resource_attributes) if resource_attributes else Resource.get_empty()
 
-        resource = (
-            Resource.create(resource_attributes) if resource_attributes else Resource.get_empty()
-        )
-
-        # 2. Create TracerProvider
-        self._tracer_provider = TracerProvider(resource=resource)
-
-        # 3. Configure OTLP exporter with authentication
-        otlp_exporter = self._create_otlp_exporter()
-
-        # 4. Add BatchSpanProcessor for efficient export
-        span_processor = BatchSpanProcessor(otlp_exporter)
-        self._tracer_provider.add_span_processor(span_processor)
-
-        # 5. Register as global tracer provider
-        trace.set_tracer_provider(self._tracer_provider)
-
-        self._initialized = True
-
-        return self._tracer_provider
-
-    def _create_otlp_exporter(self) -> SpanExporter:
-        """
-        Create OTLP span exporter configured for OpenObserve.
-
-        Returns:
-            SpanExporter instance (gRPC or HTTP/Protobuf based on configuration)
-        """
-        # Prepare headers with authorization token
-        headers = {
-            "Authorization": self.config.auth_token,
-        }
-
-        # Add additional headers if provided
+    def _build_headers(self) -> dict:
+        headers = {"Authorization": self.config.auth_token}
         if self.config.additional_headers:
             headers.update(self.config.additional_headers)
+        return headers
 
-        # Create OTLP exporter
+    def initialize_traces(self) -> TracerProvider:
+        """Initialize and register the OpenTelemetry tracer provider."""
+        resource = self._build_resource()
+        self._tracer_provider = TracerProvider(resource=resource)
+
+        headers = self._build_headers()
         endpoint = self.config.get_otlp_endpoint()
 
-        # Choose exporter based on protocol configuration
         if self.config.protocol == "grpc":
-            # For gRPC, OpenObserve requires organization and stream-name as headers
-            # (organization is not in the endpoint URL for gRPC)
             headers["organization"] = self.config.org
             headers["stream-name"] = self.config.stream_name
-
-            # gRPC requires lowercase metadata keys
             lowercase_headers = {k.lower(): v for k, v in headers.items()}
-
-            # Use insecure channel for HTTP URLs (non-TLS)
-            # gRPC defaults to TLS, but plain HTTP endpoints need insecure=True
             insecure = self.config.url.startswith("http://")
-
-            return GRPCSpanExporter(
+            exporter = GRPCSpanExporter(
                 endpoint=endpoint,
                 headers=tuple(lowercase_headers.items()),
                 timeout=self.config.timeout,
                 insecure=insecure,
             )
-        else:  # http/protobuf (default)
-            # For HTTP/Protobuf, organization is in the URL path, not headers
-            # Only add stream-name header
+        else:
             headers["stream-name"] = self.config.stream_name
-
-            return HTTPProtobufSpanExporter(
+            exporter = HTTPProtobufSpanExporter(
                 endpoint=endpoint,
                 headers=headers,
                 timeout=self.config.timeout,
             )
 
-    def get_tracer(self, name: str = __name__, version: Optional[str] = None):
-        """
-        Get a tracer from the initialized provider.
+        self._tracer_provider.add_span_processor(BatchSpanProcessor(exporter))
+        trace.set_tracer_provider(self._tracer_provider)
+        return self._tracer_provider
 
-        Args:
-            name: Tracer name (typically __name__ of the module)
-            version: Optional version string
+    def initialize_logs(self) -> LoggerProvider:
+        """Initialize and register the OpenTelemetry logger provider."""
+        resource = self._build_resource()
+        self._logger_provider = LoggerProvider(resource=resource)
 
-        Returns:
-            Tracer instance
+        headers = self._build_headers()
+        endpoint = self.config.get_otlp_logs_endpoint()
 
-        Raises:
-            RuntimeError: If client is not initialized
-        """
-        if not self._initialized or self._tracer_provider is None:
-            raise RuntimeError("OpenObserve client not initialized. Call initialize() first.")
+        if self.config.protocol == "grpc":
+            headers["organization"] = self.config.org
+            headers["stream-name"] = self.config.logs_stream_name
+            lowercase_headers = {k.lower(): v for k, v in headers.items()}
+            insecure = self.config.url.startswith("http://")
+            exporter = GRPCLogExporter(
+                endpoint=endpoint,
+                headers=tuple(lowercase_headers.items()),
+                timeout=self.config.timeout,
+                insecure=insecure,
+            )
+        else:
+            headers["stream-name"] = self.config.logs_stream_name
+            exporter = HTTPLogExporter(
+                endpoint=endpoint,
+                headers=headers,
+                timeout=self.config.timeout,
+            )
 
-        return self._tracer_provider.get_tracer(name, version)
+        self._logger_provider.add_log_record_processor(BatchLogRecordProcessor(exporter))
+        set_logger_provider(self._logger_provider)
+        return self._logger_provider
+
+    def initialize_metrics(self) -> MeterProvider:
+        """Initialize and register the OpenTelemetry meter provider."""
+        resource = self._build_resource()
+        headers = self._build_headers()
+        endpoint = self.config.get_otlp_metrics_endpoint()
+
+        if self.config.protocol == "grpc":
+            headers["organization"] = self.config.org
+            lowercase_headers = {k.lower(): v for k, v in headers.items()}
+            insecure = self.config.url.startswith("http://")
+            exporter = GRPCMetricExporter(
+                endpoint=endpoint,
+                headers=tuple(lowercase_headers.items()),
+                timeout=self.config.timeout,
+                insecure=insecure,
+            )
+        else:
+            exporter = HTTPMetricExporter(
+                endpoint=endpoint,
+                headers=headers,
+                timeout=self.config.timeout,
+            )
+
+        reader = PeriodicExportingMetricReader(exporter)
+        self._meter_provider = MeterProvider(resource=resource, metric_readers=[reader])
+        metrics.set_meter_provider(self._meter_provider)
+        return self._meter_provider
 
     def shutdown(self, timeout_millis: int = 30000) -> bool:
-        """
-        Shutdown the tracer provider and flush remaining spans.
-
-        Args:
-            timeout_millis: Timeout in milliseconds (default: 30000)
-
-        Returns:
-            True if shutdown was successful
-        """
         if self._tracer_provider is not None:
-            return self._tracer_provider.shutdown()
+            self._tracer_provider.shutdown()
+        if self._meter_provider is not None:
+            self._meter_provider.shutdown()
+        if self._logger_provider is not None:
+            self._logger_provider.shutdown()
         return True
 
     def force_flush(self, timeout_millis: int = 30000) -> bool:
-        """
-        Force flush all pending spans.
-
-        Args:
-            timeout_millis: Timeout in milliseconds (default: 30000)
-
-        Returns:
-            True if flush was successful
-        """
+        result = True
         if self._tracer_provider is not None:
-            return self._tracer_provider.force_flush(timeout_millis)
-        return True
+            result = self._tracer_provider.force_flush(timeout_millis) and result
+        if self._meter_provider is not None:
+            result = self._meter_provider.force_flush(timeout_millis) and result
+        if self._logger_provider is not None:
+            result = self._logger_provider.force_flush(timeout_millis) and result
+        return result
+
+
+def _build_config(**kwargs) -> OpenObserveConfig:
+    """Build OpenObserveConfig from keyword arguments, falling back to env vars."""
+    config_overrides = {k: v for k, v in kwargs.items() if v is not None}
+    return OpenObserveConfig.from_env(**config_overrides)
+
+
+def _ensure_atexit():
+    global _atexit_registered
+    if not _atexit_registered:
+        atexit.register(_auto_shutdown)
+        _atexit_registered = True
 
 
 def openobserve_init(
@@ -206,194 +207,244 @@ def openobserve_init(
     enabled: Optional[bool] = None,
     protocol: Optional[str] = None,
     stream_name: Optional[str] = None,
+    logs_stream_name: Optional[str] = None,
     additional_headers: Optional[dict] = None,
     resource_attributes: Optional[dict] = None,
-) -> TracerProvider:
+    logs: Optional[bool] = None,
+    metrics: Optional[bool] = None,
+    traces: Optional[bool] = None,
+) -> None:
     """
-    Initialize OpenObserve SDK and register global tracer provider.
-
-    This is the main entry point for the SDK. All configuration is read from
-    environment variables by default. You can optionally pass parameters to
-    override specific settings.
-
-    Environment Variables:
-        OPENOBSERVE_URL: OpenObserve base URL (required)
-        OPENOBSERVE_ORG: Organization name (default: "default")
-        OPENOBSERVE_AUTH_TOKEN: Authorization token (required)
-                                Format: "Basic <base64-encoded-credentials>"
-                                Example: "Basic cm9vdEBleGFtcGxlLmNvbTpDb21wbGV4cGFzczEyMz=="
-        OPENOBSERVE_TIMEOUT: Request timeout in seconds (default: 30)
-        OPENOBSERVE_ENABLED: Enable/disable tracing (default: "true")
-        OPENOBSERVE_PROTOCOL: Protocol to use - "grpc" or "http/protobuf" (default: "http/protobuf")
-        OPENOBSERVE_TRACES_STREAM_NAME: Stream name for traces (default: "default")
+    Initialize OpenObserve SDK. By default initializes all signals (logs, metrics, traces).
+    Pass any combination of logs/metrics/traces to selectively initialize.
 
     Args:
-        url: Override OPENOBSERVE_URL (optional)
-        org: Override OPENOBSERVE_ORG (optional)
-        auth_token: Override OPENOBSERVE_AUTH_TOKEN (optional)
-        timeout: Override OPENOBSERVE_TIMEOUT (optional)
-        enabled: Override OPENOBSERVE_ENABLED (optional)
-        protocol: Override OPENOBSERVE_PROTOCOL - "grpc" or "http/protobuf" (optional)
-        stream_name: Override OPENOBSERVE_TRACES_STREAM_NAME - stream name for traces (optional)
-        additional_headers: Additional HTTP headers (optional)
-        resource_attributes: Additional resource attributes (optional)
-
-    Returns:
-        TracerProvider instance
-
-    Raises:
-        ValueError: If required configuration is missing from environment
-        RuntimeError: If already initialized
+        url: Override OPENOBSERVE_URL
+        org: Override OPENOBSERVE_ORG
+        auth_token: Override OPENOBSERVE_AUTH_TOKEN
+        timeout: Override OPENOBSERVE_TIMEOUT
+        enabled: Override OPENOBSERVE_ENABLED
+        protocol: Override OPENOBSERVE_PROTOCOL - "grpc" or "http/protobuf"
+        stream_name: Override OPENOBSERVE_TRACES_STREAM_NAME
+        logs_stream_name: Override OPENOBSERVE_LOGS_STREAM_NAME
+        additional_headers: Additional HTTP headers
+        resource_attributes: Additional resource attributes
+        logs: Initialize logs provider. If no signal arguments are provided, defaults to True.
+        metrics: Initialize metrics provider. If no signal arguments are provided, defaults to True.
+        traces: Initialize traces provider. If no signal arguments are provided, defaults to True.
 
     Example:
         >>> from openobserve import openobserve_init
-        >>> from opentelemetry import trace
         >>>
-        >>> # Recommended: Use environment variables
-        >>> # export OPENOBSERVE_URL="http://localhost:5080"
-        >>> # export OPENOBSERVE_ORG="default"
-        >>> # export OPENOBSERVE_AUTH_TOKEN="Basic cm9vdEBleGFtcGxlLmNvbTpDb21wbGV4cGFzczEyMz=="
+        >>> # Initialize all (logs, metrics, traces)
         >>> openobserve_init()
         >>>
-        >>> # Use the global tracer
-        >>> tracer = trace.get_tracer(__name__)
-        >>> with tracer.start_as_current_span("my-operation"):
-        ...     # Your code here
-        ...     pass
+        >>> # Only logs
+        >>> openobserve_init(logs=True)
         >>>
-        >>> # No need to call openobserve_shutdown() explicitly!
-        >>> # The SDK will automatically flush and shutdown on program exit.
+        >>> # Logs and metrics
+        >>> openobserve_init(logs=True, metrics=True)
     """
-    global _tracer_provider, _initialized, _atexit_registered
+    global _initialized_signals
 
     with _lock:
-        if _initialized:
-            raise RuntimeError(
-                "OpenObserve SDK already initialized. "
-                "Call openobserve_shutdown() first if you need to reinitialize."
-            )
+        config = _build_config(
+            url=url,
+            org=org,
+            auth_token=auth_token,
+            timeout=timeout,
+            enabled=enabled,
+            protocol=protocol,
+            stream_name=stream_name,
+            logs_stream_name=logs_stream_name,
+            additional_headers=additional_headers,
+            resource_attributes=resource_attributes,
+        )
 
-        # Build configuration from environment and parameters
-        config_overrides = {}
-        if url is not None:
-            config_overrides["url"] = url
-        if org is not None:
-            config_overrides["org"] = org
-        if auth_token is not None:
-            config_overrides["auth_token"] = auth_token
-        if timeout is not None:
-            config_overrides["timeout"] = timeout
-        if enabled is not None:
-            config_overrides["enabled"] = enabled
-        if protocol is not None:
-            config_overrides["protocol"] = protocol
-        if stream_name is not None:
-            config_overrides["stream_name"] = stream_name
-        if additional_headers is not None:
-            config_overrides["additional_headers"] = additional_headers
-        if resource_attributes is not None:
-            config_overrides["resource_attributes"] = resource_attributes
+        if not config.enabled:
+            return
 
-        # Create configuration
-        config = OpenObserveConfig.from_env(**config_overrides)
-
-        # Create and initialize client
         client = OpenObserveClient(config)
-        _tracer_provider = client.initialize()
-        _initialized = True
 
-        # Register automatic shutdown on program exit
-        if not _atexit_registered:
-            atexit.register(_auto_shutdown)
-            _atexit_registered = True
+        signal_explicitly_set = any(flag is not None for flag in (logs, metrics, traces))
+        logs_enabled = logs if logs is not None else (not signal_explicitly_set)
+        metrics_enabled = metrics if metrics is not None else (not signal_explicitly_set)
+        traces_enabled = traces if traces is not None else (not signal_explicitly_set)
 
-        return _tracer_provider
+        if traces_enabled:
+            _init_traces(client)
+        if logs_enabled:
+            _init_logs(client)
+        if metrics_enabled:
+            _init_metrics(client)
+
+        _ensure_atexit()
+
+
+def openobserve_init_traces(
+    url: Optional[str] = None,
+    org: Optional[str] = None,
+    auth_token: Optional[str] = None,
+    timeout: Optional[int] = None,
+    protocol: Optional[str] = None,
+    stream_name: Optional[str] = None,
+    additional_headers: Optional[dict] = None,
+    resource_attributes: Optional[dict] = None,
+) -> TracerProvider:
+    """Initialize only the traces provider."""
+    global _initialized_signals
+
+    with _lock:
+        config = _build_config(
+            url=url, org=org, auth_token=auth_token, timeout=timeout,
+            protocol=protocol, stream_name=stream_name,
+            additional_headers=additional_headers, resource_attributes=resource_attributes,
+        )
+        client = OpenObserveClient(config)
+        provider = _init_traces(client)
+        _ensure_atexit()
+        return provider
+
+
+def openobserve_init_logs(
+    url: Optional[str] = None,
+    org: Optional[str] = None,
+    auth_token: Optional[str] = None,
+    timeout: Optional[int] = None,
+    protocol: Optional[str] = None,
+    logs_stream_name: Optional[str] = None,
+    additional_headers: Optional[dict] = None,
+    resource_attributes: Optional[dict] = None,
+) -> LoggerProvider:
+    """Initialize only the logs provider."""
+    global _initialized_signals
+
+    with _lock:
+        config = _build_config(
+            url=url, org=org, auth_token=auth_token, timeout=timeout,
+            protocol=protocol, logs_stream_name=logs_stream_name,
+            additional_headers=additional_headers, resource_attributes=resource_attributes,
+        )
+        client = OpenObserveClient(config)
+        provider = _init_logs(client)
+        _ensure_atexit()
+        return provider
+
+
+def openobserve_init_metrics(
+    url: Optional[str] = None,
+    org: Optional[str] = None,
+    auth_token: Optional[str] = None,
+    timeout: Optional[int] = None,
+    protocol: Optional[str] = None,
+    additional_headers: Optional[dict] = None,
+    resource_attributes: Optional[dict] = None,
+) -> MeterProvider:
+    """Initialize only the metrics provider."""
+    global _initialized_signals
+
+    with _lock:
+        config = _build_config(
+            url=url, org=org, auth_token=auth_token, timeout=timeout,
+            protocol=protocol,
+            additional_headers=additional_headers, resource_attributes=resource_attributes,
+        )
+        client = OpenObserveClient(config)
+        provider = _init_metrics(client)
+        _ensure_atexit()
+        return provider
+
+
+def _init_traces(client: OpenObserveClient) -> TracerProvider:
+    global _tracer_provider, _initialized_signals
+    if "traces" in _initialized_signals:
+        raise RuntimeError("Traces already initialized. Call openobserve_shutdown() first.")
+    _tracer_provider = client.initialize_traces()
+    _initialized_signals.add("traces")
+    return _tracer_provider
+
+
+def _init_logs(client: OpenObserveClient) -> LoggerProvider:
+    global _logger_provider, _initialized_signals
+    if "logs" in _initialized_signals:
+        raise RuntimeError("Logs already initialized. Call openobserve_shutdown() first.")
+    _logger_provider = client.initialize_logs()
+    _initialized_signals.add("logs")
+    return _logger_provider
+
+
+def _init_metrics(client: OpenObserveClient) -> MeterProvider:
+    global _meter_provider, _initialized_signals
+    if "metrics" in _initialized_signals:
+        raise RuntimeError("Metrics already initialized. Call openobserve_shutdown() first.")
+    _meter_provider = client.initialize_metrics()
+    _initialized_signals.add("metrics")
+    return _meter_provider
 
 
 def _auto_shutdown() -> None:
-    """
-    Internal function called automatically on program exit via atexit.
-
-    This ensures all pending spans are flushed before the program terminates.
-    """
     global _atexit_registered
-
-    # Unregister to prevent duplicate calls
     if _atexit_registered:
         atexit.unregister(_auto_shutdown)
         _atexit_registered = False
-
-    # Perform shutdown silently (no print statements)
     openobserve_shutdown(silent=True)
 
 
 def openobserve_shutdown(timeout_millis: int = 30000, silent: bool = False) -> bool:
-    """
-    Shutdown the OpenObserve SDK and flush remaining spans.
-
-    Note: This function is called automatically on program exit via atexit.
-    You typically don't need to call this manually unless you want to explicitly
-    control when the SDK shuts down.
-
-    Args:
-        timeout_millis: Timeout in milliseconds (default: 30000)
-        silent: If True, suppress output messages (default: False)
-
-    Returns:
-        True if shutdown was successful
-    """
-    global _tracer_provider, _initialized, _atexit_registered
+    """Shutdown all initialized providers and flush remaining data."""
+    global _tracer_provider, _meter_provider, _logger_provider
+    global _initialized_signals, _atexit_registered
 
     with _lock:
-        if not _initialized or _tracer_provider is None:
+        if not _initialized_signals:
             return True
 
-        result = _tracer_provider.shutdown()
-        _tracer_provider = None
-        _initialized = False
+        if _tracer_provider is not None:
+            _tracer_provider.shutdown()
+            _tracer_provider = None
+        if _meter_provider is not None:
+            _meter_provider.shutdown()
+            _meter_provider = None
+        if _logger_provider is not None:
+            _logger_provider.shutdown()
+            _logger_provider = None
 
-        # Unregister atexit handler to prevent duplicate shutdown
+        _initialized_signals.clear()
+
         if _atexit_registered:
             atexit.unregister(_auto_shutdown)
             _atexit_registered = False
 
-        if not silent:
-            print("✓ OpenObserve SDK shutdown complete")
-        return result
+        return True
 
 
 def openobserve_flush(timeout_millis: int = 30000) -> bool:
-    """
-    Force flush all pending spans to OpenObserve.
-
-    Args:
-        timeout_millis: Timeout in milliseconds (default: 30000)
-
-    Returns:
-        True if flush was successful
-    """
-    global _tracer_provider
-
+    """Force flush all pending data."""
+    result = True
     if _tracer_provider is not None:
-        return _tracer_provider.force_flush(timeout_millis)
-    return True
+        result = _tracer_provider.force_flush(timeout_millis) and result
+    if _meter_provider is not None:
+        result = _meter_provider.force_flush(timeout_millis) and result
+    if _logger_provider is not None:
+        result = _logger_provider.force_flush(timeout_millis) and result
+    return result
 
 
 def is_initialized() -> bool:
-    """
-    Check if OpenObserve SDK is initialized.
-
-    Returns:
-        True if initialized
-    """
-    return _initialized
+    """Check if any signal is initialized."""
+    return bool(_initialized_signals)
 
 
 def get_tracer_provider() -> Optional[TracerProvider]:
-    """
-    Get the current tracer provider.
-
-    Returns:
-        TracerProvider instance or None if not initialized
-    """
+    """Get the current tracer provider."""
     return _tracer_provider
+
+
+def get_meter_provider() -> Optional[MeterProvider]:
+    """Get the current meter provider."""
+    return _meter_provider
+
+
+def get_logger_provider() -> Optional[LoggerProvider]:
+    """Get the current logger provider."""
+    return _logger_provider
