@@ -57,7 +57,7 @@ print(response.choices[0].message.content)
 | `OPENOBSERVE_TIMEOUT` | No | Request timeout in seconds (default: 30) |
 | `OPENOBSERVE_ENABLED` | No | Enable/disable tracing (default: "true") |
 | `OPENOBSERVE_PROTOCOL` | No | Protocol: "grpc" or "http/protobuf" (default: "http/protobuf") |
-| `OPENOBSERVE_STREAM_NAME` | No | Stream name for traces (default: "default") |
+| `OPENOBSERVE_TRACES_STREAM_NAME` | No | Stream name for traces (default: "default") |
 
 ### Protocol Configuration Notes
 
@@ -65,7 +65,7 @@ print(response.choices[0].message.content)
 - Uses HTTP with Protocol Buffers encoding
 - Works with both HTTP and HTTPS endpoints
 - Organization is specified in the URL path: `/api/{org}/v1/traces`
-- Automatically adds `stream-name` header from `OPENOBSERVE_STREAM_NAME`
+- Automatically adds `stream-name` header from `OPENOBSERVE_TRACES_STREAM_NAME`
 - Standard HTTP header handling (preserves case)
 
 **gRPC**
@@ -73,7 +73,7 @@ print(response.choices[0].message.content)
   - Organization is passed as a header (not in URL)
   - Automatically adds required headers:
     - `organization`: Set to the value of `OPENOBSERVE_ORG`
-    - `stream-name`: Set to the value of `OPENOBSERVE_STREAM_NAME` (default: "default")
+    - `stream-name`: Set to the value of `OPENOBSERVE_TRACES_STREAM_NAME` (default: "default")
   - Headers are normalized to lowercase per gRPC specification
   - TLS is automatically configured based on URL scheme:
     - `http://` URLs use insecure (non-TLS) connections

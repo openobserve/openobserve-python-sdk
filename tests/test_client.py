@@ -4,8 +4,6 @@ Tests for client module
 
 from unittest.mock import Mock, patch
 
-import pytest
-
 from openobserve.client import OpenObserveClient
 from openobserve.config import OpenObserveConfig
 

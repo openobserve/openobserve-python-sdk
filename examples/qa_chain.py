@@ -1,13 +1,14 @@
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings
+from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
-from langchain_community.vectorstores import InMemoryVectorStore
 from langchain_classic.chains import create_retrieval_chain
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.vectorstores import InMemoryVectorStore
 from langchain_core.prompts import ChatPromptTemplate
-from dotenv import load_dotenv
+from langchain_openai import OpenAIEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from opentelemetry.instrumentation.langchain import LangchainInstrumentor
+
 from openobserve import openobserve_init
 
 LangchainInstrumentor().instrument()

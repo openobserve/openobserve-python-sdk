@@ -225,7 +225,7 @@ def openobserve_init(
         OPENOBSERVE_TIMEOUT: Request timeout in seconds (default: 30)
         OPENOBSERVE_ENABLED: Enable/disable tracing (default: "true")
         OPENOBSERVE_PROTOCOL: Protocol to use - "grpc" or "http/protobuf" (default: "http/protobuf")
-        OPENOBSERVE_STREAM_NAME: Stream name for traces (default: "default")
+        OPENOBSERVE_TRACES_STREAM_NAME: Stream name for traces (default: "default")
 
     Args:
         url: Override OPENOBSERVE_URL (optional)
@@ -234,7 +234,7 @@ def openobserve_init(
         timeout: Override OPENOBSERVE_TIMEOUT (optional)
         enabled: Override OPENOBSERVE_ENABLED (optional)
         protocol: Override OPENOBSERVE_PROTOCOL - "grpc" or "http/protobuf" (optional)
-        stream_name: Override OPENOBSERVE_STREAM_NAME - stream name for traces (optional)
+        stream_name: Override OPENOBSERVE_TRACES_STREAM_NAME - stream name for traces (optional)
         additional_headers: Additional HTTP headers (optional)
         resource_attributes: Additional resource attributes (optional)
 

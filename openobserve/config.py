@@ -16,7 +16,7 @@ ENV_OPENOBSERVE_AUTH_TOKEN = "OPENOBSERVE_AUTH_TOKEN"
 ENV_OPENOBSERVE_TIMEOUT = "OPENOBSERVE_TIMEOUT"
 ENV_OPENOBSERVE_ENABLED = "OPENOBSERVE_ENABLED"
 ENV_OPENOBSERVE_PROTOCOL = "OPENOBSERVE_PROTOCOL"
-ENV_OPENOBSERVE_STREAM_NAME = "OPENOBSERVE_STREAM_NAME"
+ENV_OPENOBSERVE_TRACES_STREAM_NAME = "OPENOBSERVE_TRACES_STREAM_NAME"
 
 
 @dataclass
@@ -98,7 +98,7 @@ class OpenObserveConfig:
 
         # Parse stream_name from env (default to "default")
         stream_name = overrides.get("stream_name") or os.getenv(
-            ENV_OPENOBSERVE_STREAM_NAME, "default"
+            ENV_OPENOBSERVE_TRACES_STREAM_NAME, "default"
         )
 
         return cls(

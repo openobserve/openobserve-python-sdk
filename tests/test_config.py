@@ -224,7 +224,7 @@ def test_config_stream_name_from_env(monkeypatch):
     monkeypatch.setenv("OPENOBSERVE_URL", "http://test:5080")
     monkeypatch.setenv("OPENOBSERVE_ORG", "testorg")
     monkeypatch.setenv("OPENOBSERVE_AUTH_TOKEN", "Basic dGVzdEB0ZXN0LmNvbTp0ZXN0cGFzcw==")
-    monkeypatch.setenv("OPENOBSERVE_STREAM_NAME", "my-stream")
+    monkeypatch.setenv("OPENOBSERVE_TRACES_STREAM_NAME", "my-stream")
 
     config = OpenObserveConfig.from_env()
 

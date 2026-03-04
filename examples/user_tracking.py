@@ -1,6 +1,6 @@
 from build_chain import build_qa_chain
-
 from opentelemetry.instrumentation.langchain import LangchainInstrumentor
+
 from openobserve import openobserve_init
 
 LangchainInstrumentor().instrument()
