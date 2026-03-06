@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
-    {name = "Your Name", email = "your.email@example.com"}
+    {name = "OpenObserve", email = "info@openobserve.ai"}
 ]
 keywords = ["openobserve", "opentelemetry", "tracing", "observability", "monitoring"]
 classifiers = [
@@ -48,10 +48,10 @@ openai = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-org/openobserve-python-sdk"
-Documentation = "https://github.com/your-org/openobserve-python-sdk#readme"
-Repository = "https://github.com/your-org/openobserve-python-sdk"
-"Bug Tracker" = "https://github.com/your-org/openobserve-python-sdk/issues"
+Homepage = "https://openobserve.ai"
+Documentation = "https://github.com/openobserve/openobserve-python-sdk#readme"
+Repository = "https://github.com/openobserve/openobserve-python-sdk"
+"Bug Tracker" = "https://github.com/openobserve/openobserve-python-sdk/issues"
 
 [tool.setuptools]
 packages = ["openobserve"]
