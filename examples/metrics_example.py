@@ -52,7 +52,7 @@ endpoints = ["/api/users", "/api/products", "/api/orders"]
 methods = ["GET", "POST"]
 status_codes = [200, 200, 200, 201, 400, 500]
 
-for i in range(20):
+for _ in range(20):
     endpoint = random.choice(endpoints)
     method = random.choice(methods)
     status = random.choice(status_codes)
