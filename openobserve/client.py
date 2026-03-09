@@ -7,7 +7,7 @@ OpenTelemetry logs, metrics, and traces with OpenObserve as the backend.
 
 import atexit
 import threading
-from typing import Optional
+from typing import Optional, Union
 
 from opentelemetry import metrics, trace
 from opentelemetry._logs import set_logger_provider
@@ -43,7 +43,9 @@ from .config import OpenObserveConfig
 _tracer_provider: Optional[TracerProvider] = None
 _meter_provider: Optional[MeterProvider] = None
 _logger_provider: Optional[LoggerProvider] = None
-_initialized_signals: set = set()  # tracks which signals are initialized: "traces", "logs", "metrics"
+_initialized_signals: set = (
+    set()
+)  # tracks which signals are initialized: "traces", "logs", "metrics"
 _lock = threading.RLock()
 _atexit_registered: bool = False
 
@@ -84,6 +86,7 @@ class OpenObserveClient:
         headers = self._build_headers()
         endpoint = self.config.get_otlp_endpoint()
 
+        exporter: Union[GRPCSpanExporter, HTTPProtobufSpanExporter]
         if self.config.protocol == "grpc":
             headers["organization"] = self.config.org
             headers["stream-name"] = self.config.stream_name
@@ -115,6 +118,7 @@ class OpenObserveClient:
         headers = self._build_headers()
         endpoint = self.config.get_otlp_logs_endpoint()
 
+        exporter: Union[GRPCLogExporter, HTTPLogExporter]
         if self.config.protocol == "grpc":
             headers["organization"] = self.config.org
             headers["stream-name"] = self.config.logs_stream_name
@@ -144,6 +148,7 @@ class OpenObserveClient:
         headers = self._build_headers()
         endpoint = self.config.get_otlp_metrics_endpoint()
 
+        exporter: Union[GRPCMetricExporter, HTTPMetricExporter]
         if self.config.protocol == "grpc":
             headers["organization"] = self.config.org
             lowercase_headers = {k.lower(): v for k, v in headers.items()}
@@ -296,9 +301,14 @@ def openobserve_init_traces(
 
     with _lock:
         config = _build_config(
-            url=url, org=org, auth_token=auth_token, timeout=timeout,
-            protocol=protocol, stream_name=stream_name,
-            additional_headers=additional_headers, resource_attributes=resource_attributes,
+            url=url,
+            org=org,
+            auth_token=auth_token,
+            timeout=timeout,
+            protocol=protocol,
+            stream_name=stream_name,
+            additional_headers=additional_headers,
+            resource_attributes=resource_attributes,
         )
         client = OpenObserveClient(config)
         provider = _init_traces(client)
@@ -321,9 +331,14 @@ def openobserve_init_logs(
 
     with _lock:
         config = _build_config(
-            url=url, org=org, auth_token=auth_token, timeout=timeout,
-            protocol=protocol, logs_stream_name=logs_stream_name,
-            additional_headers=additional_headers, resource_attributes=resource_attributes,
+            url=url,
+            org=org,
+            auth_token=auth_token,
+            timeout=timeout,
+            protocol=protocol,
+            logs_stream_name=logs_stream_name,
+            additional_headers=additional_headers,
+            resource_attributes=resource_attributes,
         )
         client = OpenObserveClient(config)
         provider = _init_logs(client)
@@ -345,9 +360,13 @@ def openobserve_init_metrics(
 
     with _lock:
         config = _build_config(
-            url=url, org=org, auth_token=auth_token, timeout=timeout,
+            url=url,
+            org=org,
+            auth_token=auth_token,
+            timeout=timeout,
             protocol=protocol,
-            additional_headers=additional_headers, resource_attributes=resource_attributes,
+            additional_headers=additional_headers,
+            resource_attributes=resource_attributes,
         )
         client = OpenObserveClient(config)
         provider = _init_metrics(client)

@@ -243,10 +243,11 @@ def test_http_exporter_custom_stream_name():
 
 def test_openobserve_init_defaults_enable_all():
     """Calling openobserve_init() without signal flags should initialize all signals."""
-    with patch("openobserve.client._init_traces") as mock_traces, \
-        patch("openobserve.client._init_logs") as mock_logs, \
-        patch("openobserve.client._init_metrics") as mock_metrics, \
-        patch("openobserve.client._ensure_atexit"):
+    with patch("openobserve.client._init_traces") as mock_traces, patch(
+        "openobserve.client._init_logs"
+    ) as mock_logs, patch("openobserve.client._init_metrics") as mock_metrics, patch(
+        "openobserve.client._ensure_atexit"
+    ):
         client_module.openobserve_init(auth_token="token")
 
     mock_traces.assert_called_once()
@@ -256,10 +257,11 @@ def test_openobserve_init_defaults_enable_all():
 
 def test_openobserve_init_only_logs_when_flag_set():
     """Passing logs=True should disable other signals by default."""
-    with patch("openobserve.client._init_traces") as mock_traces, \
-        patch("openobserve.client._init_logs") as mock_logs, \
-        patch("openobserve.client._init_metrics") as mock_metrics, \
-        patch("openobserve.client._ensure_atexit"):
+    with patch("openobserve.client._init_traces") as mock_traces, patch(
+        "openobserve.client._init_logs"
+    ) as mock_logs, patch("openobserve.client._init_metrics") as mock_metrics, patch(
+        "openobserve.client._ensure_atexit"
+    ):
         client_module.openobserve_init(auth_token="token", logs=True)
 
     mock_logs.assert_called_once()
@@ -269,10 +271,11 @@ def test_openobserve_init_only_logs_when_flag_set():
 
 def test_openobserve_init_combines_selected_signals():
     """Multiple explicit flags should only initialize the selected signals."""
-    with patch("openobserve.client._init_traces") as mock_traces, \
-        patch("openobserve.client._init_logs") as mock_logs, \
-        patch("openobserve.client._init_metrics") as mock_metrics, \
-        patch("openobserve.client._ensure_atexit"):
+    with patch("openobserve.client._init_traces") as mock_traces, patch(
+        "openobserve.client._init_logs"
+    ) as mock_logs, patch("openobserve.client._init_metrics") as mock_metrics, patch(
+        "openobserve.client._ensure_atexit"
+    ):
         client_module.openobserve_init(auth_token="token", logs=True, metrics=True)
 
     mock_logs.assert_called_once()

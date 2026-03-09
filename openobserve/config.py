@@ -7,7 +7,7 @@ including environment variables and default values.
 
 import os
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 # Environment variable names
 ENV_OPENOBSERVE_URL = "OPENOBSERVE_URL"
@@ -40,7 +40,7 @@ class OpenObserveConfig:
 
     url: str
     org: str
-    auth_token: str
+    auth_token: Optional[str]
     timeout: int = 30
     enabled: bool = True
     protocol: str = "http/protobuf"
@@ -84,9 +84,17 @@ class OpenObserveConfig:
             ValueError: If required environment variables are missing
         """
         # Read from environment with overrides taking precedence
-        url = overrides.get("url") or os.getenv(ENV_OPENOBSERVE_URL, "http://localhost:5080")
-        org = overrides.get("org") or os.getenv(ENV_OPENOBSERVE_ORG, "default")
-        auth_token = overrides.get("auth_token") or os.getenv(ENV_OPENOBSERVE_AUTH_TOKEN)
+        url_value: Any = overrides.get("url") or os.getenv(
+            ENV_OPENOBSERVE_URL, "http://localhost:5080"
+        )
+        url: str = url_value if isinstance(url_value, str) else "http://localhost:5080"
+
+        org_value: Any = overrides.get("org") or os.getenv(ENV_OPENOBSERVE_ORG, "default")
+        org: str = org_value if isinstance(org_value, str) else "default"
+
+        auth_token: Optional[str] = overrides.get("auth_token") or os.getenv(
+            ENV_OPENOBSERVE_AUTH_TOKEN
+        )
 
         # Parse timeout from env (default to 30)
         timeout_str = os.getenv(ENV_OPENOBSERVE_TIMEOUT, "30")
@@ -97,16 +105,23 @@ class OpenObserveConfig:
         enabled = overrides.get("enabled", enabled_str in ("true", "1", "yes"))
 
         # Parse protocol from env (default to "http/protobuf")
-        protocol = overrides.get("protocol") or os.getenv(ENV_OPENOBSERVE_PROTOCOL, "http/protobuf")
+        protocol_value: Any = overrides.get("protocol") or os.getenv(
+            ENV_OPENOBSERVE_PROTOCOL, "http/protobuf"
+        )
+        protocol: str = protocol_value if isinstance(protocol_value, str) else "http/protobuf"
 
         # Parse stream_name from env (default to "default")
-        stream_name = overrides.get("stream_name") or os.getenv(
+        stream_name_value: Any = overrides.get("stream_name") or os.getenv(
             ENV_OPENOBSERVE_TRACES_STREAM_NAME, "default"
         )
+        stream_name: str = stream_name_value if isinstance(stream_name_value, str) else "default"
 
         # Parse logs_stream_name from env (default to "default")
-        logs_stream_name = overrides.get("logs_stream_name") or os.getenv(
+        logs_stream_name_value: Any = overrides.get("logs_stream_name") or os.getenv(
             ENV_OPENOBSERVE_LOGS_STREAM_NAME, "default"
+        )
+        logs_stream_name: str = (
+            logs_stream_name_value if isinstance(logs_stream_name_value, str) else "default"
         )
 
         return cls(
