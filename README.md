@@ -24,7 +24,7 @@ export ANTHROPIC_API_KEY="your-api-key"
 
 **Install dependencies:**
 ```bash
-uv pip install openai opentelemetry-instrumentation-openai
+uv pip install openobserve-sdk openai opentelemetry-instrumentation-openai
 ```
 
 **Use with OpenAI:**
@@ -98,11 +98,14 @@ openobserve_init(logs=True, metrics=True)
 ## Installation
 
 ```bash
-# Install the SDK (includes both HTTP/Protobuf and gRPC support)
-uv pip install -e .
+# Install from PyPI
+pip install openobserve-sdk
+
+# Or install from source (includes both HTTP/Protobuf and gRPC support)
+pip install -e .
 
 # Or using requirements.txt
-uv pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 ## Examples
