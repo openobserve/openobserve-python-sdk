@@ -191,9 +191,9 @@ We welcome contributions! Please feel free to open issues or submit pull request
 
 ## Support
 
-- 📖 [OpenObserve Documentation](https://docs.openobserve.ai/)
+- 📖 [OpenObserve Documentation](https://openobserve.ai/docs/)
 - 🐛 [Report Issues](https://github.com/openobserve/openobserve-python-sdk/issues)
-- 💬 [OpenObserve Community](https://openobserve.ai/)
+- 💬 [OpenObserve Community](https://short.openobserve.ai/community)
 
 ## License
 
