@@ -113,7 +113,7 @@ logging.getLogger().addHandler(handler)
 | `OPENOBSERVE_ORG` | No | Organization name (default: "default") |
 | `OPENOBSERVE_AUTH_TOKEN` | ✅ | Authorization token (Format: "Basic <base64>") |
 | `OPENOBSERVE_TIMEOUT` | No | Request timeout in seconds (default: 30) |
-| `OPENOBSERVE_ENABLED` | No | Enable/disable tracing (default: "true") |
+| `OPENOBSERVE_ENABLED` | No | Enable/disable telemetry(default: "true") |
 | `OPENOBSERVE_PROTOCOL` | No | Protocol: "grpc" or "http/protobuf" (default: "http/protobuf") |
 | `OPENOBSERVE_TRACES_STREAM_NAME` | No | Stream name for traces (default: "default") |
 | `OPENOBSERVE_LOGS_STREAM_NAME` | No | Stream name for logs (default: "default") |
