@@ -7,6 +7,7 @@ A simple and lightweight Python SDK for exporting OpenTelemetry logs, metrics, a
 - **Easy Integration** – Minimal setup with automatic instrumentation for popular libraries
 - **Multi-Signal Support** – Capture logs, metrics, and traces simultaneously
 - **Flexible Protocol** – Choose between HTTP/Protobuf (default) or gRPC
+- **Agent Identity** – Stamp GenAI agent identity on trace spans
 - **Lightweight** – Minimal dependencies, designed for production use
 - **OpenTelemetry Native** – Built on OpenTelemetry standards for compatibility
 
@@ -117,6 +118,25 @@ logging.getLogger().addHandler(handler)
 | `OPENOBSERVE_PROTOCOL` | No | Protocol: "grpc" or "http/protobuf" (default: "http/protobuf") |
 | `OPENOBSERVE_TRACES_STREAM_NAME` | No | Stream name for traces (default: "default") |
 | `OPENOBSERVE_LOGS_STREAM_NAME` | No | Stream name for logs (default: "default") |
+| `OPENOBSERVE_AGENT_ID` | No | GenAI agent ID to stamp on trace spans |
+| `OPENOBSERVE_AGENT_NAME` | No | GenAI agent name to stamp on trace spans |
+
+### Agent Identity
+
+Use `agent_id` and/or `agent_name` to identify the GenAI agent that emitted trace spans:
+
+```python
+from openobserve import openobserve_agent, openobserve_init
+
+# Static identity for all trace spans from this process.
+openobserve_init(agent_id="support-agent", agent_name="Support Agent")
+
+# Request-scoped identity overrides static identity and propagates via OTel baggage.
+with openobserve_agent(agent_name="Triage Agent"):
+    run_agent_workflow()
+```
+
+The SDK stamps identity as span attributes (`gen_ai.agent.id`, `gen_ai.agent.name`). Do not put these keys in `resource_attributes`; resource attributes describe the emitting service or process and are not span attributes.
 
 ### Protocol Configuration Notes
 

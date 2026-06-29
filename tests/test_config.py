@@ -150,6 +150,43 @@ def test_config_resource_attributes():
     assert config.resource_attributes == attributes
 
 
+def test_config_agent_identity_from_env_is_trimmed(monkeypatch):
+    """Test creating config with agent identity from environment variables."""
+    monkeypatch.setenv("OPENOBSERVE_AUTH_TOKEN", "Basic dGVzdA==")
+    monkeypatch.setenv("OPENOBSERVE_AGENT_ID", "  agent-123  ")
+    monkeypatch.setenv("OPENOBSERVE_AGENT_NAME", "\tSupport Agent\n")
+
+    config = OpenObserveConfig.from_env()
+
+    assert config.agent_id == "agent-123"
+    assert config.agent_name == "Support Agent"
+
+
+def test_config_agent_identity_allows_name_only():
+    """Test that agent identity can be configured with only a name."""
+    config = OpenObserveConfig(
+        url="http://localhost:5080",
+        org="default",
+        auth_token="Basic dGVzdA==",
+        agent_name="  Support Agent  ",
+    )
+
+    assert config.agent_id is None
+    assert config.agent_name == "Support Agent"
+
+
+def test_config_agent_identity_rejects_only_empty_values():
+    """Test that provided agent identity cannot be only empty values."""
+    with pytest.raises(ValueError, match="Agent identity requires"):
+        OpenObserveConfig(
+            url="http://localhost:5080",
+            org="default",
+            auth_token="Basic dGVzdA==",
+            agent_id="   ",
+            agent_name="\t",
+        )
+
+
 def test_config_protocol_validation():
     """Test that invalid protocol raises ValueError."""
     with pytest.raises(ValueError, match="Protocol must be either 'grpc' or 'http/protobuf'"):

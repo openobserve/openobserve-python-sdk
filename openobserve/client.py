@@ -37,6 +37,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
+from .agent import AgentIdentity, AgentIdentitySpanProcessor
 from .config import OpenObserveConfig
 
 # Global state for singleton pattern
@@ -70,7 +71,7 @@ class OpenObserveClient:
         resource_attributes = {}
         if self.config.resource_attributes:
             resource_attributes.update(self.config.resource_attributes)
-        return Resource.create(resource_attributes) if resource_attributes else Resource.get_empty()
+        return Resource.create(resource_attributes)
 
     def _build_headers(self) -> dict:
         headers = {"Authorization": self.config.auth_token}
@@ -82,6 +83,11 @@ class OpenObserveClient:
         """Initialize and register the OpenTelemetry tracer provider."""
         resource = self._build_resource()
         self._tracer_provider = TracerProvider(resource=resource)
+        self._tracer_provider.add_span_processor(
+            AgentIdentitySpanProcessor(
+                AgentIdentity(agent_id=self.config.agent_id, agent_name=self.config.agent_name)
+            )
+        )
 
         headers = self._build_headers()
         endpoint = self.config.get_otlp_endpoint()
@@ -215,6 +221,8 @@ def openobserve_init(
     logs_stream_name: Optional[str] = None,
     additional_headers: Optional[dict] = None,
     resource_attributes: Optional[dict] = None,
+    agent_id: Optional[str] = None,
+    agent_name: Optional[str] = None,
     logs: Optional[bool] = None,
     metrics: Optional[bool] = None,
     traces: Optional[bool] = None,
@@ -234,6 +242,8 @@ def openobserve_init(
         logs_stream_name: Override OPENOBSERVE_LOGS_STREAM_NAME
         additional_headers: Additional HTTP headers
         resource_attributes: Additional resource attributes
+        agent_id: GenAI agent ID to stamp on trace spans
+        agent_name: GenAI agent name to stamp on trace spans
         logs: Initialize logs provider. If no signal arguments are provided, defaults to True.
         metrics: Initialize metrics provider. If no signal arguments are provided, defaults to True.
         traces: Initialize traces provider. If no signal arguments are provided, defaults to True.
@@ -264,6 +274,8 @@ def openobserve_init(
             logs_stream_name=logs_stream_name,
             additional_headers=additional_headers,
             resource_attributes=resource_attributes,
+            agent_id=agent_id,
+            agent_name=agent_name,
         )
 
         if not config.enabled:
@@ -295,6 +307,8 @@ def openobserve_init_traces(
     stream_name: Optional[str] = None,
     additional_headers: Optional[dict] = None,
     resource_attributes: Optional[dict] = None,
+    agent_id: Optional[str] = None,
+    agent_name: Optional[str] = None,
 ) -> TracerProvider:
     """Initialize only the traces provider."""
     global _initialized_signals
@@ -309,6 +323,8 @@ def openobserve_init_traces(
             stream_name=stream_name,
             additional_headers=additional_headers,
             resource_attributes=resource_attributes,
+            agent_id=agent_id,
+            agent_name=agent_name,
         )
         client = OpenObserveClient(config)
         provider = _init_traces(client)

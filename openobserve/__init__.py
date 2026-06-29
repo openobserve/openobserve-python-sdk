@@ -25,6 +25,7 @@ Usage:
 
 __version__ = "0.1.0"
 
+from .agent import openobserve_agent
 from .client import (
     OpenObserveClient,
     get_logger_provider,
@@ -48,6 +49,7 @@ __all__ = [
     "openobserve_init_traces",
     "openobserve_shutdown",
     "openobserve_flush",
+    "openobserve_agent",
     "is_initialized",
     "get_tracer_provider",
     "get_meter_provider",

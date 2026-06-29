@@ -241,6 +241,21 @@ def test_http_exporter_custom_stream_name():
         assert "organization" not in headers
 
 
+def test_build_resource_uses_resource_create_for_empty_attributes():
+    """Resource.create({}) preserves normal OpenTelemetry default resource merging."""
+    config = OpenObserveConfig(
+        url="http://localhost:5080",
+        org="default",
+        auth_token="Basic dGVzdA==",
+    )
+    client = OpenObserveClient(config)
+
+    with patch("openobserve.client.Resource.create") as mock_create:
+        client._build_resource()
+
+    mock_create.assert_called_once_with({})
+
+
 def test_openobserve_init_defaults_enable_all():
     """Calling openobserve_init() without signal flags should initialize all signals."""
     with patch("openobserve.client._init_traces") as mock_traces, patch(
