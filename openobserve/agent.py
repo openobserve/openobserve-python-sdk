@@ -38,7 +38,9 @@ class AgentIdentity:
 def normalize_agent_identity(
     agent_id: object, agent_name: object, *, required: bool = False
 ) -> Optional[AgentIdentity]:
-    identity = AgentIdentity(agent_id=_normalize_value(agent_id), agent_name=_normalize_value(agent_name))
+    identity = AgentIdentity(
+        agent_id=_normalize_value(agent_id), agent_name=_normalize_value(agent_name)
+    )
     if identity.has_any():
         return identity
     if required:
@@ -51,7 +53,9 @@ _current_agent_identity: ContextVar[Optional[AgentIdentity]] = ContextVar(
 )
 
 
-def _resolve_agent_identity(static_identity: Optional[AgentIdentity] = None) -> Optional[AgentIdentity]:
+def _resolve_agent_identity(
+    static_identity: Optional[AgentIdentity] = None,
+) -> Optional[AgentIdentity]:
     local_identity = _current_agent_identity.get()
     if local_identity is not None and local_identity.has_any():
         return local_identity

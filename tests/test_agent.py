@@ -36,9 +36,7 @@ def _attach_inherited_identity(agent_id="inherited-id", agent_name="Inherited Ag
 
 def test_static_agent_identity_stamps_all_recording_spans_and_overwrites_existing_attrs():
     span = _record_span(
-        AgentIdentitySpanProcessor(
-            AgentIdentity(agent_id="agent-123", agent_name="Support Agent")
-        ),
+        AgentIdentitySpanProcessor(AgentIdentity(agent_id="agent-123", agent_name="Support Agent")),
         attributes={
             "gen_ai.agent.id": "old-id",
             "gen_ai.agent.name": "Old Name",
