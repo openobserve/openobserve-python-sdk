@@ -153,6 +153,8 @@ openobserve_init(
 
 Resource-level `gen_ai.agent.name` is attached through the OpenTelemetry `Resource`. OpenObserve can use it as a fallback for LLM span agent identity, but span attributes take precedence. Use this only when the process has one static agent identity. For request-scoped or multi-agent processes, prefer `agent_name=` or `openobserve_agent(...)`.
 
+If you already manage OpenTelemetry providers yourself, see [Native OpenTelemetry Agent Identity](docs/native-opentelemetry-agent-identity.md) for equivalent native SDK patterns.
+
 ### Protocol Configuration Notes
 
 **HTTP/Protobuf (default)**
