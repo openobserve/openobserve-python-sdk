@@ -23,7 +23,7 @@ Usage:
         >>> openobserve_init_traces()
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 from .agent import openobserve_agent
 from .client import (
