@@ -9,6 +9,8 @@ import os
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
+from .agent import normalize_agent_identity
+
 # Environment variable names
 ENV_OPENOBSERVE_URL = "OPENOBSERVE_URL"
 ENV_OPENOBSERVE_ORG = "OPENOBSERVE_ORG"
@@ -18,6 +20,8 @@ ENV_OPENOBSERVE_ENABLED = "OPENOBSERVE_ENABLED"
 ENV_OPENOBSERVE_PROTOCOL = "OPENOBSERVE_PROTOCOL"
 ENV_OPENOBSERVE_TRACES_STREAM_NAME = "OPENOBSERVE_TRACES_STREAM_NAME"
 ENV_OPENOBSERVE_LOGS_STREAM_NAME = "OPENOBSERVE_LOGS_STREAM_NAME"
+ENV_OPENOBSERVE_AGENT_ID = "OPENOBSERVE_AGENT_ID"
+ENV_OPENOBSERVE_AGENT_NAME = "OPENOBSERVE_AGENT_NAME"
 
 
 @dataclass
@@ -36,6 +40,8 @@ class OpenObserveConfig:
         logs_stream_name: Stream name for logs (default: "default")
         additional_headers: Additional HTTP headers to send with requests
         resource_attributes: Additional resource attributes for the service
+        agent_id: GenAI agent ID to stamp on trace spans
+        agent_name: GenAI agent name to stamp on trace spans
     """
 
     url: str
@@ -48,6 +54,8 @@ class OpenObserveConfig:
     logs_stream_name: str = "default"
     additional_headers: Optional[Dict[str, str]] = None
     resource_attributes: Optional[Dict[str, str]] = None
+    agent_id: Optional[str] = None
+    agent_name: Optional[str] = None
 
     def __post_init__(self):
         """Validate configuration after initialization."""
@@ -68,6 +76,13 @@ class OpenObserveConfig:
         # Validate protocol
         if self.protocol not in ("grpc", "http/protobuf"):
             raise ValueError("Protocol must be either 'grpc' or 'http/protobuf'")
+
+        identity_provided = self.agent_id is not None or self.agent_name is not None
+        identity = normalize_agent_identity(
+            self.agent_id, self.agent_name, required=identity_provided
+        )
+        self.agent_id = identity.agent_id if identity is not None else None
+        self.agent_name = identity.agent_name if identity is not None else None
 
     @classmethod
     def from_env(cls, **overrides) -> "OpenObserveConfig":
@@ -124,6 +139,14 @@ class OpenObserveConfig:
             logs_stream_name_value if isinstance(logs_stream_name_value, str) else "default"
         )
 
+        agent_id: Optional[str] = overrides.get("agent_id")
+        if agent_id is None:
+            agent_id = os.getenv(ENV_OPENOBSERVE_AGENT_ID)
+
+        agent_name: Optional[str] = overrides.get("agent_name")
+        if agent_name is None:
+            agent_name = os.getenv(ENV_OPENOBSERVE_AGENT_NAME)
+
         return cls(
             url=url,
             org=org,
@@ -135,6 +158,8 @@ class OpenObserveConfig:
             logs_stream_name=logs_stream_name,
             additional_headers=overrides.get("additional_headers"),
             resource_attributes=overrides.get("resource_attributes"),
+            agent_id=agent_id,
+            agent_name=agent_name,
         )
 
     def _get_grpc_endpoint(self) -> str:

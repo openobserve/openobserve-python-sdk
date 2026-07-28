@@ -7,6 +7,7 @@ A simple and lightweight Python SDK for exporting OpenTelemetry logs, metrics, a
 - **Easy Integration** – Minimal setup with automatic instrumentation for popular libraries
 - **Multi-Signal Support** – Capture logs, metrics, and traces simultaneously
 - **Flexible Protocol** – Choose between HTTP/Protobuf (default) or gRPC
+- **Agent Identity** – Stamp GenAI agent identity on trace spans
 - **Lightweight** – Minimal dependencies, designed for production use
 - **OpenTelemetry Native** – Built on OpenTelemetry standards for compatibility
 
@@ -113,10 +114,46 @@ logging.getLogger().addHandler(handler)
 | `OPENOBSERVE_ORG` | No | Organization name (default: "default") |
 | `OPENOBSERVE_AUTH_TOKEN` | ✅ | Authorization token (Format: "Basic <base64>") |
 | `OPENOBSERVE_TIMEOUT` | No | Request timeout in seconds (default: 30) |
-| `OPENOBSERVE_ENABLED` | No | Enable/disable tracing (default: "true") |
+| `OPENOBSERVE_ENABLED` | No | Enable/disable telemetry(default: "true") |
 | `OPENOBSERVE_PROTOCOL` | No | Protocol: "grpc" or "http/protobuf" (default: "http/protobuf") |
 | `OPENOBSERVE_TRACES_STREAM_NAME` | No | Stream name for traces (default: "default") |
 | `OPENOBSERVE_LOGS_STREAM_NAME` | No | Stream name for logs (default: "default") |
+| `OPENOBSERVE_AGENT_ID` | No | GenAI agent ID to stamp on trace spans |
+| `OPENOBSERVE_AGENT_NAME` | No | GenAI agent name to stamp on trace spans |
+
+### Agent Identity
+
+Use `agent_id` and/or `agent_name` to identify the GenAI agent that emitted trace spans:
+
+```python
+from openobserve import openobserve_agent, openobserve_init
+
+# Static identity for all trace spans from this process.
+openobserve_init(agent_id="support-agent", agent_name="Support Agent")
+
+# Request-scoped identity overrides static identity and propagates via OTel baggage.
+with openobserve_agent(agent_name="Triage Agent"):
+    run_agent_workflow()
+```
+
+The SDK stamps identity as span attributes (`gen_ai.agent.id`, `gen_ai.agent.name`). Span attributes are the preferred path for OpenObserve agent attribution, especially when a process can handle multiple agents or request-scoped agent identity.
+
+For a single-agent process, you may also set the agent name as an OpenTelemetry resource attribute:
+
+```python
+from openobserve import openobserve_init
+
+openobserve_init(
+    resource_attributes={
+        "service.name": "support-agent-worker",
+        "gen_ai.agent.name": "Support Agent",
+    },
+)
+```
+
+Resource-level `gen_ai.agent.name` is attached through the OpenTelemetry `Resource`. OpenObserve can use it as a fallback for LLM span agent identity, but span attributes take precedence. Use this only when the process has one static agent identity. For request-scoped or multi-agent processes, prefer `agent_name=` or `openobserve_agent(...)`.
+
+If you already manage OpenTelemetry providers yourself, see [Native OpenTelemetry Agent Identity](docs/native-opentelemetry-agent-identity.md) for equivalent native SDK patterns.
 
 ### Protocol Configuration Notes
 
@@ -199,9 +236,9 @@ We welcome contributions! Please feel free to open issues or submit pull request
 
 ## Support
 
-- 📖 [OpenObserve Documentation](https://docs.openobserve.ai/)
+- 📖 [OpenObserve Documentation](https://openobserve.ai/docs/)
 - 🐛 [Report Issues](https://github.com/openobserve/openobserve-python-sdk/issues)
-- 💬 [OpenObserve Community](https://openobserve.ai/)
+- 💬 [OpenObserve Community](https://short.openobserve.ai/community)
 
 ## License
 
