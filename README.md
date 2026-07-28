@@ -52,8 +52,7 @@ from openai import OpenAI
 # Use OpenAI as normal - traces are automatically captured
 client = OpenAI()
 response = client.chat.completions.create(
-    model="gpt-3.5-turbo",
-    messages=[{"role": "user", "content": "Hello!"}]
+    model="gpt-3.5-turbo", messages=[{"role": "user", "content": "Hello!"}]
 )
 print(response.choices[0].message.content)
 ```
@@ -74,7 +73,7 @@ client = Anthropic()
 response = client.messages.create(
     model="claude-3-5-sonnet-20241022",
     max_tokens=1024,
-    messages=[{"role": "user", "content": "Hello!"}]
+    messages=[{"role": "user", "content": "Hello!"}],
 )
 print(response.content[0].text)
 ```

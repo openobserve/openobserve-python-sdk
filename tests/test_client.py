@@ -21,7 +21,9 @@ def test_grpc_exporter_headers_are_lowercase():
 
     client = OpenObserveClient(config)
 
-    with patch("opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter") as mock_grpc_exporter:
+    with patch(
+        "opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter"
+    ) as mock_grpc_exporter:
         mock_grpc_exporter.return_value = Mock()
         client.initialize_traces()
 
@@ -62,7 +64,9 @@ def test_http_exporter_headers_preserve_case():
 
     client = OpenObserveClient(config)
 
-    with patch("opentelemetry.exporter.otlp.proto.http.trace_exporter.OTLPSpanExporter") as mock_http_exporter:
+    with patch(
+        "opentelemetry.exporter.otlp.proto.http.trace_exporter.OTLPSpanExporter"
+    ) as mock_http_exporter:
         mock_http_exporter.return_value = Mock()
         client.initialize_traces()
 
@@ -98,7 +102,9 @@ def test_grpc_exporter_endpoint():
 
     client = OpenObserveClient(config)
 
-    with patch("opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter") as mock_grpc_exporter:
+    with patch(
+        "opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter"
+    ) as mock_grpc_exporter:
         mock_grpc_exporter.return_value = Mock()
         client.initialize_traces()
 
@@ -118,7 +124,9 @@ def test_http_exporter_endpoint():
 
     client = OpenObserveClient(config)
 
-    with patch("opentelemetry.exporter.otlp.proto.http.trace_exporter.OTLPSpanExporter") as mock_http_exporter:
+    with patch(
+        "opentelemetry.exporter.otlp.proto.http.trace_exporter.OTLPSpanExporter"
+    ) as mock_http_exporter:
         mock_http_exporter.return_value = Mock()
         client.initialize_traces()
 
@@ -138,7 +146,9 @@ def test_grpc_exporter_insecure_for_http():
 
     client = OpenObserveClient(config)
 
-    with patch("opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter") as mock_grpc_exporter:
+    with patch(
+        "opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter"
+    ) as mock_grpc_exporter:
         mock_grpc_exporter.return_value = Mock()
         client.initialize_traces()
 
@@ -158,7 +168,9 @@ def test_grpc_exporter_secure_for_https():
 
     client = OpenObserveClient(config)
 
-    with patch("opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter") as mock_grpc_exporter:
+    with patch(
+        "opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter"
+    ) as mock_grpc_exporter:
         mock_grpc_exporter.return_value = Mock()
         client.initialize_traces()
 
@@ -178,7 +190,9 @@ def test_grpc_exporter_includes_organization_header():
 
     client = OpenObserveClient(config)
 
-    with patch("opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter") as mock_grpc_exporter:
+    with patch(
+        "opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter"
+    ) as mock_grpc_exporter:
         mock_grpc_exporter.return_value = Mock()
         client.initialize_traces()
 
@@ -203,7 +217,9 @@ def test_grpc_exporter_custom_stream_name():
 
     client = OpenObserveClient(config)
 
-    with patch("opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter") as mock_grpc_exporter:
+    with patch(
+        "opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter"
+    ) as mock_grpc_exporter:
         mock_grpc_exporter.return_value = Mock()
         client.initialize_traces()
 
@@ -227,7 +243,9 @@ def test_http_exporter_custom_stream_name():
 
     client = OpenObserveClient(config)
 
-    with patch("opentelemetry.exporter.otlp.proto.http.trace_exporter.OTLPSpanExporter") as mock_http_exporter:
+    with patch(
+        "opentelemetry.exporter.otlp.proto.http.trace_exporter.OTLPSpanExporter"
+    ) as mock_http_exporter:
         mock_http_exporter.return_value = Mock()
         client.initialize_traces()
 

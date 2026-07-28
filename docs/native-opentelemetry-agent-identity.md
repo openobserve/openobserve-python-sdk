@@ -229,9 +229,7 @@ exporter = OTLPSpanExporter(
 )
 
 provider = TracerProvider(resource=resource)
-provider.add_span_processor(
-    AgentIdentitySpanProcessor(agent_id="o2-ai", agent_name="O2 AI")
-)
+provider.add_span_processor(AgentIdentitySpanProcessor(agent_id="o2-ai", agent_name="O2 AI"))
 provider.add_span_processor(BatchSpanProcessor(exporter))
 trace.set_tracer_provider(provider)
 
