@@ -7,28 +7,10 @@ OpenTelemetry logs, metrics, and traces with OpenObserve as the backend.
 
 import atexit
 import threading
-from typing import Optional, Union
+from typing import Optional
 
 from opentelemetry import metrics, trace
 from opentelemetry._logs import set_logger_provider
-from opentelemetry.exporter.otlp.proto.grpc._log_exporter import (
-    OTLPLogExporter as GRPCLogExporter,
-)
-from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (
-    OTLPMetricExporter as GRPCMetricExporter,
-)
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
-    OTLPSpanExporter as GRPCSpanExporter,
-)
-from opentelemetry.exporter.otlp.proto.http._log_exporter import (
-    OTLPLogExporter as HTTPLogExporter,
-)
-from opentelemetry.exporter.otlp.proto.http.metric_exporter import (
-    OTLPMetricExporter as HTTPMetricExporter,
-)
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
-    OTLPSpanExporter as HTTPProtobufSpanExporter,
-)
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.metrics import MeterProvider
@@ -38,6 +20,60 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 from .config import OpenObserveConfig
+
+# OTLP exporter imports are deferred to init time and scoped per protocol so a
+# broken or version-drifted transport that is not in use can never break the
+# SDK (e.g. a stray gRPC exporter upgrade must not take down http/protobuf users).
+
+
+def _installed_otel_versions() -> str:
+    try:
+        from importlib.metadata import distributions
+
+        pkgs = sorted(
+            (dist.metadata["Name"], dist.version)
+            for dist in distributions()
+            if (dist.metadata["Name"] or "").lower().startswith("opentelemetry")
+        )
+        return ", ".join(f"{name}=={version}" for name, version in pkgs) or "none found"
+    except Exception:
+        return "unknown"
+
+
+def _import_http_exporters():
+    """Return (span, log, metric) exporter classes for http/protobuf."""
+    try:
+        from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
+        from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    except Exception as err:
+        raise ImportError(
+            "OpenObserve SDK could not import the OTLP http/protobuf exporters. "
+            "This usually means opentelemetry-exporter-otlp-proto-http is missing or "
+            "its version has drifted from opentelemetry-sdk — all opentelemetry-* "
+            "packages must come from the same release train. Reinstall a consistent "
+            "set, e.g. `pip install --upgrade opentelemetry-sdk "
+            "opentelemetry-exporter-otlp-proto-http`. "
+            f"Installed: {_installed_otel_versions()}"
+        ) from err
+    return OTLPSpanExporter, OTLPLogExporter, OTLPMetricExporter
+
+
+def _import_grpc_exporters():
+    """Return (span, log, metric) exporter classes for grpc."""
+    try:
+        from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
+        from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+    except Exception as err:
+        raise ImportError(
+            "protocol='grpc' requires the OTLP gRPC exporter, which failed to import. "
+            "Install it with `pip install openobserve-telemetry-sdk[grpc]` and make "
+            "sure all opentelemetry-* packages come from the same release train. "
+            f"Installed: {_installed_otel_versions()}"
+        ) from err
+    return OTLPSpanExporter, OTLPLogExporter, OTLPMetricExporter
+
 
 # Global state for singleton pattern
 _tracer_provider: Optional[TracerProvider] = None
@@ -86,21 +122,22 @@ class OpenObserveClient:
         headers = self._build_headers()
         endpoint = self.config.get_otlp_endpoint()
 
-        exporter: Union[GRPCSpanExporter, HTTPProtobufSpanExporter]
         if self.config.protocol == "grpc":
+            span_exporter_cls, _, _ = _import_grpc_exporters()
             headers["organization"] = self.config.org
             headers["stream-name"] = self.config.stream_name
             lowercase_headers = {k.lower(): v for k, v in headers.items()}
             insecure = self.config.url.startswith("http://")
-            exporter = GRPCSpanExporter(
+            exporter = span_exporter_cls(
                 endpoint=endpoint,
                 headers=tuple(lowercase_headers.items()),
                 timeout=self.config.timeout,
                 insecure=insecure,
             )
         else:
+            span_exporter_cls, _, _ = _import_http_exporters()
             headers["stream-name"] = self.config.stream_name
-            exporter = HTTPProtobufSpanExporter(
+            exporter = span_exporter_cls(
                 endpoint=endpoint,
                 headers=headers,
                 timeout=self.config.timeout,
@@ -118,21 +155,22 @@ class OpenObserveClient:
         headers = self._build_headers()
         endpoint = self.config.get_otlp_logs_endpoint()
 
-        exporter: Union[GRPCLogExporter, HTTPLogExporter]
         if self.config.protocol == "grpc":
+            _, log_exporter_cls, _ = _import_grpc_exporters()
             headers["organization"] = self.config.org
             headers["stream-name"] = self.config.logs_stream_name
             lowercase_headers = {k.lower(): v for k, v in headers.items()}
             insecure = self.config.url.startswith("http://")
-            exporter = GRPCLogExporter(
+            exporter = log_exporter_cls(
                 endpoint=endpoint,
                 headers=tuple(lowercase_headers.items()),
                 timeout=self.config.timeout,
                 insecure=insecure,
             )
         else:
+            _, log_exporter_cls, _ = _import_http_exporters()
             headers["stream-name"] = self.config.logs_stream_name
-            exporter = HTTPLogExporter(
+            exporter = log_exporter_cls(
                 endpoint=endpoint,
                 headers=headers,
                 timeout=self.config.timeout,
@@ -148,19 +186,20 @@ class OpenObserveClient:
         headers = self._build_headers()
         endpoint = self.config.get_otlp_metrics_endpoint()
 
-        exporter: Union[GRPCMetricExporter, HTTPMetricExporter]
         if self.config.protocol == "grpc":
+            _, _, metric_exporter_cls = _import_grpc_exporters()
             headers["organization"] = self.config.org
             lowercase_headers = {k.lower(): v for k, v in headers.items()}
             insecure = self.config.url.startswith("http://")
-            exporter = GRPCMetricExporter(
+            exporter = metric_exporter_cls(
                 endpoint=endpoint,
                 headers=tuple(lowercase_headers.items()),
                 timeout=self.config.timeout,
                 insecure=insecure,
             )
         else:
-            exporter = HTTPMetricExporter(
+            _, _, metric_exporter_cls = _import_http_exporters()
+            exporter = metric_exporter_cls(
                 endpoint=endpoint,
                 headers=headers,
                 timeout=self.config.timeout,
