@@ -52,8 +52,7 @@ from openai import OpenAI
 # Use OpenAI as normal - traces are automatically captured
 client = OpenAI()
 response = client.chat.completions.create(
-    model="gpt-3.5-turbo",
-    messages=[{"role": "user", "content": "Hello!"}]
+    model="gpt-3.5-turbo", messages=[{"role": "user", "content": "Hello!"}]
 )
 print(response.choices[0].message.content)
 ```
@@ -74,7 +73,7 @@ client = Anthropic()
 response = client.messages.create(
     model="claude-3-5-sonnet-20241022",
     max_tokens=1024,
-    messages=[{"role": "user", "content": "Hello!"}]
+    messages=[{"role": "user", "content": "Hello!"}],
 )
 print(response.content[0].text)
 ```
@@ -165,6 +164,7 @@ If you already manage OpenTelemetry providers yourself, see [Native OpenTelemetr
 - Standard HTTP header handling (preserves case).
 
 **gRPC**
+- Requires the optional gRPC extra: `pip install openobserve-telemetry-sdk[grpc]`.
 - Uses gRPC protocol with automatic configuration:
   - Organization is passed as a header (not in the URL).
   - Automatically adds required headers:
@@ -183,6 +183,9 @@ Choose your preferred installation method:
 # From PyPI (recommended)
 pip install openobserve-telemetry-sdk
 
+# With gRPC transport support (needed for protocol="grpc")
+pip install "openobserve-telemetry-sdk[grpc]"
+
 # From source (development)
 pip install -e .
 
@@ -190,7 +193,11 @@ pip install -e .
 pip install -r requirements.txt
 ```
 
-Both HTTP/Protobuf (default) and gRPC protocols are included in all installations.
+HTTP/Protobuf (the default protocol) works out of the box. The gRPC transport
+is an optional extra — install `openobserve-telemetry-sdk[grpc]` if you set
+`protocol="grpc"` (or `OPENOBSERVE_PROTOCOL=grpc`). Keeping it optional means a
+broken or version-drifted gRPC exporter install can never affect HTTP users,
+and the core install stays free of the native `grpcio` dependency.
 
 ## Supported Instruments
 

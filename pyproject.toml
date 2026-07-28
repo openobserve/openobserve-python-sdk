@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "openobserve-telemetry-sdk"
-version = "0.1.1"
+version = "0.2.0"
 description = "A simple Python SDK for exporting OpenTelemetry logs, metrics, and traces to OpenObserve"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -28,18 +28,26 @@ classifiers = [
 ]
 
 dependencies = [
-    "opentelemetry-api>=1.20.0",
-    "opentelemetry-sdk>=1.20.0",
-    "opentelemetry-exporter-otlp-proto-http>=1.20.0",
-    "opentelemetry-exporter-otlp-proto-grpc>=1.20.0",
+    "opentelemetry-api>=1.20.0,<2.0",
+    "opentelemetry-sdk>=1.20.0,<2.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.20.0,<2.0",
 ]
 
 [project.optional-dependencies]
+# gRPC transport is opt-in: the exporter (and grpcio) are only needed when
+# protocol="grpc", and keeping them out of the core dependency set means a
+# broken/drifted gRPC install can never take down http/protobuf users.
+grpc = [
+    "opentelemetry-exporter-otlp-proto-grpc>=1.20.0,<2.0",
+]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "ruff>=0.8.0",
     "mypy>=0.990",
+    # The test suite exercises the gRPC transport (mock.patch imports it),
+    # so dev environments need the exporter even though runtime does not.
+    "opentelemetry-exporter-otlp-proto-grpc>=1.20.0,<2.0",
 ]
 
 openai = [
