@@ -185,6 +185,10 @@ _FINAL_CODES = frozenset(
         "missing_output",
         "duplicate_slot_in_batch",
         "experiment_sealed",
+        # The Slot already holds a terminal record. Resending the same bytes
+        # would be a duplicate and resending different ones is refused again,
+        # so a retry can only add traffic and repeat the rejection.
+        "slot_immutable",
         "missing_client_scorer_key",
         "unknown_score_config",
         "invalid_score_value",

@@ -124,7 +124,7 @@ def items(
             f"/datasets/{dataset_id}/items",
             params={"from": offset, "size": 100, "includeDeleted": include_deleted},
         )
-        batch = page.get("items", [])
+        batch = page.get("list", [])
         yield from batch
         if not page.get("hasMore") or not batch:
             return

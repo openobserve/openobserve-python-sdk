@@ -75,8 +75,12 @@ def test_summary_exposes_per_dimension_aggregates_cost_and_latency():
     assert summary["incomplete"] is False
 
 
-def test_url_points_at_the_run():
-    assert result(detail()).url.endswith("/acme/experiments/exp-1")
+def test_url_points_at_the_page_the_application_actually_serves():
+    # /web/ai/... with the org as a query parameter; the old
+    # /web/<org>/experiments/... path is a 404.
+    assert (
+        result(detail()).url == "http://localhost:5080/web/ai/experiments/exp-1?org_identifier=acme"
+    )
 
 
 def test_a_comparison_is_labelled_partial_until_scoring_is_terminal():
@@ -85,6 +89,30 @@ def test_a_comparison_is_labelled_partial_until_scoring_is_terminal():
 
     done = result(detail(scoring="completed"), comparison(dimension("d", "unchanged")))
     assert done.compare("exp-0")["partial"] is False
+
+
+def test_the_servers_partial_verdict_wins_over_this_runs_own_scoring_state():
+    """Only the server sees both sides; a pending baseline is still partial."""
+    payload = comparison(dimension("d", "unchanged"))
+    payload["partial"] = True
+    payload["baselineScoringStatus"] = "pending"
+    payload["candidateScoringStatus"] = "completed"
+
+    settled_candidate = result(detail(scoring="completed"), payload)
+
+    assert settled_candidate.compare("exp-0")["partial"] is True
+
+
+def test_summary_merges_client_reported_dimensions_with_scorer_ones():
+    payload = detail()
+    payload["results"]["clientScoreSummaries"] = [
+        {"clientScorerKey": "qa_exact_match", "scoreConfigName": "exact_match", "sampleCount": 3}
+    ]
+
+    dimensions = result(payload).summary["dimensions"]
+
+    assert [d.get("producer") for d in dimensions] == ["scorer", "client"]
+    assert dimensions[1]["clientScorerKey"] == "qa_exact_match"
 
 
 def test_wait_for_scoring_blocks_until_a_terminal_state():

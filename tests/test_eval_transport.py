@@ -129,6 +129,33 @@ def test_a_rejection_the_server_would_only_repeat_is_never_resent():
     assert batcher.report.rejections[0]["code"] == "unknown_slot"
 
 
+def test_an_immutable_slot_is_reported_once_and_never_resent():
+    """A Slot that already concluded answers the same way forever."""
+    attempts = []
+
+    def send(records, scores):
+        attempts.append(len(records))
+        return {
+            "records": [
+                {
+                    "index": 0,
+                    "accepted": False,
+                    "rowId": "row-1",
+                    "error": {"code": "slot_immutable", "message": "already holds a record"},
+                }
+            ],
+            "rejectedRecords": 1,
+        }
+
+    batcher = RecordBatcher(send, now=FakeClock(), sleep=lambda _: None)
+    batcher.add_record(record(0))
+    batcher.flush()
+
+    assert attempts == [1]
+    assert len(batcher.report.rejections) == 1
+    assert batcher.report.rejections[0]["code"] == "slot_immutable"
+
+
 def test_a_conflict_is_a_verdict_and_is_not_retried():
     attempts = []
 

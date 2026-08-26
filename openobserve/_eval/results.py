@@ -7,6 +7,7 @@ person would read in the UI and turns it into an exit code.
 
 import time
 from typing import Any, Callable, Dict, List, Optional, Sequence
+from urllib.parse import quote
 
 from .errors import RegressionError, ValidationError
 from .http import HTTPClient
@@ -38,10 +39,19 @@ class ExperimentResult:
 
     @property
     def url(self) -> str:
-        """Where a person can look at this run."""
-        base = self._client.config.url
+        """Where a person can look at this run.
+
+        The organization travels as a query parameter, not as a path segment:
+        the application routes AI Observability under a fixed ``/web/ai`` path
+        and reads the org from ``org_identifier``. A link that guesses
+        otherwise lands on a 404, which is worse than no link at all.
+        """
+        base = str(self._client.config.url).rstrip("/")
         org = self._client.config.org
-        return f"{base}/web/{org}/experiments/{self.experiment_id}"
+        return (
+            f"{base}/web/ai/experiments/{self.experiment_id}"
+            f"?org_identifier={quote(str(org), safe='')}"
+        )
 
     def refresh(self) -> Dict[str, Any]:
         self._detail = self._client.get(f"/experiments/{self.experiment_id}")
@@ -73,8 +83,20 @@ class ExperimentResult:
         """Per-dimension aggregates, cost, and latency for this run."""
         results = self.detail.get("results") or {}
         aggregate = results.get("aggregateSummary") or {}
+        # Platform and client dimensions are separate on the wire because they
+        # are not comparable with each other (A3.4). A caller reading "what did
+        # this run score" wants both, so they are merged here with the producer
+        # kept on each entry rather than silently flattened.
+        dimensions: List[Dict[str, Any]] = [
+            {**dimension, "producer": "scorer"}
+            for dimension in (results.get("scoreSummaries") or [])
+        ]
+        dimensions += [
+            {**dimension, "producer": "client"}
+            for dimension in (results.get("clientScoreSummaries") or [])
+        ]
         return {
-            "dimensions": results.get("scoreSummaries") or [],
+            "dimensions": dimensions,
             "cost": aggregate.get("totalCost"),
             "p50_latency_ms": aggregate.get("p50LatencyMs"),
             "incomplete": aggregate.get("incomplete", False),
@@ -125,7 +147,11 @@ class ExperimentResult:
                 "threshold": threshold,
             },
         )
-        comparison["partial"] = self.scoring_status not in TERMINAL_SCORING
+        # The server owns this verdict: it sees both sides' Scoring Status,
+        # while this object only knows its own. Overwriting it here turned a
+        # pending *baseline* into a comparison that claimed to be final.
+        if "partial" not in comparison:
+            comparison["partial"] = self.scoring_status not in TERMINAL_SCORING
         return comparison
 
     def assert_no_regression(

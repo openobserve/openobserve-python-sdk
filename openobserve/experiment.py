@@ -30,6 +30,9 @@ from .scorer import LocalScorer, PlatformScorerRef, split_scorers
 
 DEFAULT_MAX_CONCURRENCY = 8
 SLOT_PAGE_SIZE = 200
+# Result pages are numbered from 1 and capped server-side; 100 is the default
+# page size the detail endpoint uses when a caller omits one.
+RESULT_PAGE_SIZE = 100
 
 
 def run(
@@ -242,20 +245,29 @@ def _pending_slots(http: HTTPClient, experiment_id: str) -> List[SlotRef]:
 
 
 def _terminal_slot_keys(http: HTTPClient, experiment_id: str) -> set:
+    """Slots the server already holds a final ok/skipped record for.
+
+    Result pages on the detail endpoint are numbered from 1, unlike the
+    offset-paginated slot listing next to it: page 0 is rejected outright.
+    """
     keys = set()
-    offset = 0
+    page_number = 1
     while True:
         page = http.get(
             f"/experiments/{experiment_id}",
-            params={"resultPage": offset // 100, "resultPageSize": 100},
+            params={
+                "resultPage": page_number,
+                "resultPageSize": RESULT_PAGE_SIZE,
+            },
         )
-        slots = ((page.get("results") or {}).get("slots")) or []
+        results = page.get("results") or {}
+        slots = results.get("slots") or []
         for slot in slots:
             if str(slot.get("taskStatus", "")) in ("ok", "skipped"):
                 keys.add((str(slot.get("rowId")), int(slot.get("trialIndex", 0))))
-        if len(slots) < 100:
+        if not (results.get("pagination") or {}).get("hasMore"):
             return keys
-        offset += len(slots)
+        page_number += 1
 
 
 def _iter_slots(http: HTTPClient, experiment_id: str) -> Any:

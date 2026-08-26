@@ -112,6 +112,24 @@ def test_upsert_generates_an_idempotency_key_when_the_caller_omits_one():
     assert client.calls_to("PUT", "/datasets/ds-1/items")[0]["body"]["idempotencyKey"]
 
 
+def test_items_reads_the_list_envelope_the_server_actually_sends():
+    """The listing endpoint answers under 'list'; only the upsert reply uses 'items'."""
+    client = FakeClient(
+        {
+            ("GET", "/datasets"): DATASETS,
+            ("GET", "/datasets/ds-1/items"): {
+                "list": [{"rowId": "row-1", "logicalId": "case-1"}],
+                "total": 1,
+                "hasMore": False,
+            },
+        }
+    )
+
+    assert [case["logicalId"] for case in datasets.items("rag-qa-golden", client=client)] == [
+        "case-1"
+    ]
+
+
 def test_ensure_sends_the_declared_bounds():
     client = FakeClient({("PUT", "/score_configs"): {"outcome": "created", "config": {}}})
 
@@ -309,6 +327,85 @@ def test_resume_refuses_an_experiment_that_is_not_failed():
             resume="exp-1",
             client=client,
         )
+
+
+def test_resume_reads_result_pages_from_one_and_reruns_only_unfinished_slots():
+    """Result pages are 1-based; page 0 is a 400 and used to break every resume."""
+    task_fingerprint = None
+
+    def capture_create(body, _):
+        nonlocal task_fingerprint
+        task_fingerprint = body["task"]["taskFingerprint"]
+        return {"experiment": {"id": "exp-1", "status": "running"}}
+
+    def detail(_, params):
+        params = params or {}
+        if "resultPage" in params:
+            assert params["resultPage"] >= 1, "page 0 is rejected by the server"
+        return {
+            "experiment": {
+                "id": "exp-1",
+                "status": "failed",
+                "task": {"taskFingerprint": task_fingerprint},
+            },
+            "results": {
+                "slots": [
+                    {"rowId": "row-1", "trialIndex": 0, "taskStatus": "ok"},
+                    {"rowId": "row-2", "trialIndex": 0, "taskStatus": "error"},
+                ],
+                "pagination": {
+                    "page": params.get("resultPage", 1),
+                    "pageSize": params.get("resultPageSize", 100),
+                    "totalSlots": 2,
+                    "hasMore": False,
+                },
+            },
+        }
+
+    def task(input, context):
+        return "tomorrow"
+
+    client = run_client(
+        [slot_payload("row-1", 0), slot_payload("row-2", 0)],
+        extra={("POST", "/experiments"): capture_create},
+    )
+    experiment.run(
+        "prompt-v3",
+        dataset="rag-qa-golden",
+        task=task,
+        scorers=[exact_match],
+        max_concurrency=1,
+        client=client,
+    )
+
+    resumed = run_client(
+        [slot_payload("row-1", 0), slot_payload("row-2", 0)],
+        extra={
+            ("GET", "/experiments/exp-1"): detail,
+            ("POST", "/experiments/exp-1/retry"): {"id": "exp-1", "status": "running"},
+        },
+    )
+    experiment.run(
+        "prompt-v3",
+        dataset="rag-qa-golden",
+        task=task,
+        scorers=[exact_match],
+        max_concurrency=1,
+        resume="exp-1",
+        client=resumed,
+    )
+
+    pages = [
+        (c["params"] or {}).get("resultPage") for c in resumed.calls_to("GET", "/experiments/exp-1")
+    ]
+    assert [page for page in pages if page is not None] == [1]
+    reported = [
+        r["rowId"]
+        for call in resumed.calls_to("POST", "/experiments/exp-1/records")
+        for r in call["body"]["records"]
+    ]
+    # The successful Slot keeps its record; only the error Slot runs again.
+    assert reported == ["row-2"]
 
 
 def test_resume_refuses_when_the_task_has_changed():
