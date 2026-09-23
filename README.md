@@ -8,6 +8,7 @@ A simple and lightweight Python SDK for exporting OpenTelemetry logs, metrics, a
 - **Multi-Signal Support** – Capture logs, metrics, and traces simultaneously
 - **Flexible Protocol** – Choose between HTTP/Protobuf (default) or gRPC
 - **Agent Identity** – Stamp GenAI agent identity on trace spans
+- **Experiments** – Evaluate your own code against a dataset and gate CI on regressions
 - **Lightweight** – Minimal dependencies, designed for production use
 - **OpenTelemetry Native** – Built on OpenTelemetry standards for compatibility
 
@@ -208,6 +209,113 @@ The SDK works with OpenTelemetry instrumentation packages:
 - **LangChain** – Use with `opentelemetry-instrumentation-langchain` for LLM chain tracing
 - **Standard Python Logging** – Built-in support via `LoggingHandler`
 - **Metrics** – OpenTelemetry counters, histograms, and up/down counters
+
+## Experiments
+
+Evaluate your own code against a dataset, score the results, and fail CI when
+quality regresses. Experiments reuse the same environment variables as
+telemetry export, so an instrumented process needs no extra configuration.
+
+### Prepare the data
+
+A run always anchors to a dataset that already exists — there is no `data=`
+parameter. A run that carried its own inline data would be comparable to no
+other run, which is the whole point of having one.
+
+```python
+from openobserve import datasets, score_configs
+
+datasets.upsert(
+    "rag-qa-golden",
+    items=[
+        {
+            "logical_id": "case-42",
+            "input": {"question": "refund window?"},
+            "expected_output": "30 days",
+        },
+    ],
+)
+
+score_configs.ensure(
+    "exact_match",
+    type="numeric",
+    min=0,
+    max=1,
+    healthy_threshold={"direction": "gte", "value": 1.0},
+)
+```
+
+`upsert` is safe to repeat: identical content appends no revision. Updating an
+existing `logical_id` requires the `if_row_id` you read, so a concurrent edit
+is a conflict rather than a silent overwrite.
+
+`ensure` is safe to call on every run: identical parameters change nothing, and
+only a changed range, category set, or health policy appends a version.
+
+### Run it
+
+```python
+from openobserve import experiment, scorer
+
+
+@scorer(config="exact_match")
+def exact_match(output, expected_output):
+    return 1.0 if output.strip() == expected_output.strip() else 0.0
+
+
+def my_task(input, context):
+    # context carries row_id, trial_index, and the case's metadata
+    return my_pipeline(input["question"])
+
+
+result = experiment.run(
+    "prompt-v3",
+    dataset="rag-qa-golden",  # or "rag-qa-golden@9" to pin a snapshot
+    task=my_task,
+    scorers=["answer_correctness@2", exact_match],
+    trial_count=3,
+    max_concurrency=8,
+)
+print(result.url)
+```
+
+Platform scorers (strings) run server-side; `@scorer` functions run locally and
+are self-reported. A mixed list is split automatically.
+
+Declaring an `expected_output` parameter is what makes a scorer
+reference-based. Cases without a reference skip that dimension and are counted
+rather than scored wrongly.
+
+Raise `Skip("reason")` from a task to decline a case. An uncaught exception is
+retried three times with exponential backoff, then recorded as an error — the
+run continues either way, so one bad case never costs you the cohort.
+
+### Gate CI on it
+
+```python
+result.wait_for_scoring()
+result.assert_no_regression("exp_abc123", dimensions=["answer_correctness"])
+```
+
+`assert_no_regression` raises an `AssertionError` subclass, so an unhandled
+failure exits non-zero. Inconclusive cases fail by default: a comparison that
+could not reach a verdict is not evidence of safety. Pass
+`allow_inconclusive=True` once you have decided that risk is acceptable, and
+`allow_scoring_errors=True` to accept a run whose scoring finished with errors.
+
+Scoring is asynchronous, so `wait_for_scoring()` comes first — the assertion
+refuses to guess from partial results rather than passing by accident.
+
+### Resuming
+
+```python
+experiment.run(..., resume="exp_abc123")
+```
+
+Only a failed experiment can resume, and only against the same task
+fingerprint. If the code changed, the SDK refuses: a cohort half-answered by
+two versions supports no conclusion. Successes and skips are left untouched;
+missing and errored slots are rerun.
 
 ## Examples
 

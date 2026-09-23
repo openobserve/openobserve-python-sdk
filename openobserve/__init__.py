@@ -21,10 +21,37 @@ Usage:
         >>> # Or use individual init functions
         >>> from openobserve import openobserve_init_traces
         >>> openobserve_init_traces()
+
+    Run an experiment against your own code:
+        >>> from openobserve import experiment, scorer, datasets, score_configs
+        >>>
+        >>> score_configs.ensure("exact_match", type="numeric", min=0, max=1)
+        >>>
+        >>> @scorer(config="exact_match")
+        ... def exact_match(output, expected_output):
+        ...     return 1.0 if output.strip() == expected_output.strip() else 0.0
+        >>>
+        >>> result = experiment.run(
+        ...     "prompt-v3",
+        ...     dataset="rag-qa-golden",
+        ...     task=my_task,
+        ...     scorers=["answer_correctness@2", exact_match],
+        ... )
+        >>> print(result.url)
 """
 
 __version__ = "0.1.1"
 
+from . import datasets, experiment, score_configs
+from ._eval.errors import (
+    APIError,
+    ConfigurationError,
+    OpenObserveEvalError,
+    RegressionError,
+    TransportError,
+    ValidationError,
+)
+from ._eval.types import Skip, TaskContext, TaskResult, Usage
 from .agent import openobserve_agent
 from .client import (
     OpenObserveClient,
@@ -40,6 +67,7 @@ from .client import (
     openobserve_shutdown,
 )
 from .config import OpenObserveConfig
+from .scorer import scorer
 
 __all__ = [
     # Main API
@@ -57,6 +85,21 @@ __all__ = [
     # Advanced API
     "OpenObserveClient",
     "OpenObserveConfig",
+    # Evaluation API
+    "experiment",
+    "datasets",
+    "score_configs",
+    "scorer",
+    "Skip",
+    "TaskResult",
+    "TaskContext",
+    "Usage",
+    "OpenObserveEvalError",
+    "APIError",
+    "ConfigurationError",
+    "RegressionError",
+    "TransportError",
+    "ValidationError",
     # Version
     "__version__",
 ]
