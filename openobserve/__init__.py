@@ -67,6 +67,13 @@ from .client import (
     openobserve_shutdown,
 )
 from .config import OpenObserveConfig
+from .prompts import (
+    PromptBinding,
+    PromptError,
+    PromptStore,
+    ResolvedPrompt,
+    normalize_auth_header,
+)
 from .scorer import scorer
 
 __all__ = [
@@ -84,6 +91,12 @@ __all__ = [
     "get_logger_provider",
     # Advanced API
     "OpenObserveClient",
+    # Prompt management API
+    "PromptBinding",
+    "PromptError",
+    "PromptStore",
+    "ResolvedPrompt",
+    "normalize_auth_header",
     "OpenObserveConfig",
     # Evaluation API
     "experiment",

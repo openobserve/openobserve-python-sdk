@@ -10,7 +10,12 @@ A Python SDK for OpenObserve telemetry and evaluations.
 - **Agent Identity** – Stamp GenAI agent identity on trace spans
 - **Experiments** – Evaluate your own code against a dataset and gate CI on regressions
 - **Lightweight** – Minimal dependencies, designed for production use
+
 - **OpenTelemetry Native** – Built on OpenTelemetry standards for compatibility
+
+## Prompt Management
+
+Resolve text prompts from an OpenObserve prompt registry with ETag-based refresh and immutable in-memory snapshots. This API is independent of OpenTelemetry and agent frameworks. See the [prompts guide](docs/prompts.md) for setup, lifecycle, and error semantics.
 
 ## Quick Start
 
