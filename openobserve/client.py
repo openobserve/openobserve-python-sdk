@@ -69,7 +69,7 @@ def _import_grpc_exporters():
     except Exception as err:
         raise ImportError(
             "protocol='grpc' requires the OTLP gRPC exporter, which failed to import. "
-            "Install it with `pip install openobserve-telemetry-sdk[grpc]` and make "
+            "Install it with `pip install openobserve-python-sdk[grpc]` and make "
             "sure all opentelemetry-* packages come from the same release train. "
             f"Installed: {_installed_otel_versions()}"
         ) from err
