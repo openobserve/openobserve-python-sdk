@@ -2,7 +2,7 @@
 # Install with: pip install -r examples/requirements.txt
 
 # Core project dependency (install from parent directory with: pip install -e ..)
-# openobserve>=0.1.0
+# openobserve-python-sdk>=0.2.0
 
 # LangChain packages for qa_chain.py example
 langchain>=0.3.0

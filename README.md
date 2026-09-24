@@ -1,6 +1,6 @@
-# OpenObserve Telemetry SDK
+# OpenObserve Python SDK
 
-A simple and lightweight Python SDK for exporting OpenTelemetry logs, metrics, and traces to [OpenObserve](https://openobserve.ai/).
+A Python SDK for OpenObserve telemetry and evaluations.
 
 ## Features
 
@@ -36,7 +36,7 @@ export ANTHROPIC_API_KEY="your-anthropic-key"
 
 **Install dependencies:**
 ```bash
-pip install openobserve-telemetry-sdk openai opentelemetry-instrumentation-openai
+pip install openobserve-python-sdk openai opentelemetry-instrumentation-openai
 ```
 
 **Quick Example – OpenAI Instrumentation:**
@@ -165,7 +165,7 @@ If you already manage OpenTelemetry providers yourself, see [Native OpenTelemetr
 - Standard HTTP header handling (preserves case).
 
 **gRPC**
-- Requires the optional gRPC extra: `pip install openobserve-telemetry-sdk[grpc]`.
+- Requires the optional gRPC extra: `pip install openobserve-python-sdk[grpc]`.
 - Uses gRPC protocol with automatic configuration:
   - Organization is passed as a header (not in the URL).
   - Automatically adds required headers:
@@ -182,10 +182,10 @@ Choose your preferred installation method:
 
 ```bash
 # From PyPI (recommended)
-pip install openobserve-telemetry-sdk
+pip install openobserve-python-sdk
 
 # With gRPC transport support (needed for protocol="grpc")
-pip install "openobserve-telemetry-sdk[grpc]"
+pip install "openobserve-python-sdk[grpc]"
 
 # From source (development)
 pip install -e .
@@ -194,11 +194,8 @@ pip install -e .
 pip install -r requirements.txt
 ```
 
-HTTP/Protobuf (the default protocol) works out of the box. The gRPC transport
-is an optional extra — install `openobserve-telemetry-sdk[grpc]` if you set
-`protocol="grpc"` (or `OPENOBSERVE_PROTOCOL=grpc`). Keeping it optional means a
-broken or version-drifted gRPC exporter install can never affect HTTP users,
-and the core install stays free of the native `grpcio` dependency.
+HTTP/Protobuf is the default protocol. For gRPC, install `openobserve-python-sdk[grpc]` and set `protocol="grpc"` or `OPENOBSERVE_PROTOCOL=grpc`.
+The core package does not depend on `grpcio`.
 
 ## Supported Instruments
 

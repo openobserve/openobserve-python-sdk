@@ -3,16 +3,16 @@ requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "openobserve-telemetry-sdk"
+name = "openobserve-python-sdk"
 version = "0.2.0"
-description = "A simple Python SDK for exporting OpenTelemetry logs, metrics, and traces to OpenObserve"
+description = "Python SDK for OpenObserve telemetry and evaluations"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
     {name = "OpenObserve", email = "info@openobserve.ai"}
 ]
-keywords = ["openobserve", "opentelemetry", "tracing", "observability", "monitoring", "openobserve-telemetry-sdk"]
+keywords = ["openobserve", "opentelemetry", "tracing", "observability", "monitoring", "openobserve-python-sdk"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",

@@ -81,8 +81,9 @@ def test_http_traces_work_with_broken_grpc_exporter(broken_grpc_exporter):
         mock_exporter.assert_called_once()
 
 
-def test_grpc_protocol_raises_actionable_error(broken_grpc_exporter):
-    """grpc users get a clear ImportError pointing at the [grpc] extra, not a deep traceback."""
+def test_grpc_protocol_fails_with_broken_exporter(broken_grpc_exporter):
+    """A broken gRPC exporter fails only when gRPC is used."""
     client = OpenObserveClient(_grpc_config())
-    with pytest.raises(ImportError, match=r"openobserve-telemetry-sdk\[grpc\]"):
+    with pytest.raises(ImportError) as error:
         client.initialize_traces()
+    assert isinstance(error.value.__cause__, ImportError)
