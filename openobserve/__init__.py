@@ -69,8 +69,8 @@ from .client import (
 from .config import OpenObserveConfig
 from .prompts import (
     PromptBinding,
-    RemotePromptError,
-    RemotePromptStore,
+    PromptError,
+    PromptStore,
     ResolvedPrompt,
     normalize_auth_header,
 )
@@ -93,8 +93,8 @@ __all__ = [
     "OpenObserveClient",
     # Prompt management API
     "PromptBinding",
-    "RemotePromptError",
-    "RemotePromptStore",
+    "PromptError",
+    "PromptStore",
     "ResolvedPrompt",
     "normalize_auth_header",
     "OpenObserveConfig",

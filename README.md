@@ -13,9 +13,9 @@ A Python SDK for OpenObserve telemetry and evaluations.
 
 - **OpenTelemetry Native** – Built on OpenTelemetry standards for compatibility
 
-## Remote Prompt Management
+## Prompt Management
 
-Resolve text prompts from an OpenObserve prompt registry with ETag-based refresh and immutable snapshots. This API is independent of OpenTelemetry and agent frameworks. See the [remote prompts guide](docs/remote-prompts.md) for setup, lifecycle, and error semantics.
+Resolve text prompts from an OpenObserve prompt registry with ETag-based refresh and immutable in-memory snapshots. This API is independent of OpenTelemetry and agent frameworks. See the [prompts guide](docs/prompts.md) for setup, lifecycle, and error semantics.
 
 ## Quick Start
 

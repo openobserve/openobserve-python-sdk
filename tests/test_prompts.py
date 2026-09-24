@@ -1,9 +1,9 @@
-"""Behavioral tests for the public remote-prompt store."""
+"""Behavioral tests for the public prompt store."""
 
 import httpx
 import pytest
 
-from openobserve import PromptBinding, RemotePromptError, RemotePromptStore
+from openobserve import PromptBinding, PromptError, PromptStore
 
 
 def _body(name: str, version: int = 1) -> dict[str, object]:
@@ -20,8 +20,8 @@ def _body(name: str, version: int = 1) -> dict[str, object]:
     }
 
 
-def _store(client: httpx.AsyncClient) -> RemotePromptStore:
-    return RemotePromptStore(
+def _store(client: httpx.AsyncClient) -> PromptStore:
+    return PromptStore(
         enabled=True,
         url="http://o2.test/api/acme/prompts/resolve",
         auth_token="token",
@@ -56,6 +56,7 @@ async def test_resolves_prompt_and_keeps_snapshot_on_conditional_not_modified():
     assert requests[0].headers["authorization"] == "Bearer token"
     assert requests[1].headers["if-none-match"] == '"v1"'
     assert store.status()["ready"] is True
+    assert store.status()["mode"] == "managed"
 
 
 @pytest.mark.asyncio
@@ -64,7 +65,7 @@ async def test_failed_initial_resolution_surfaces_safe_error_without_caching():
         transport=httpx.MockTransport(lambda _: httpx.Response(403))
     ) as client:
         store = _store(client)
-        with pytest.raises(RemotePromptError, match="Initial remote prompt load failed"):
+        with pytest.raises(PromptError, match="Initial prompt load failed"):
             await store.initialize()
 
     assert store.get("assistant") is None
@@ -80,7 +81,7 @@ async def test_invalid_prompt_identity_is_rejected_before_snapshot_replacement()
         )
     ) as client:
         store = _store(client)
-        with pytest.raises(RemotePromptError, match="Initial remote prompt load failed"):
+        with pytest.raises(PromptError, match="Initial prompt load failed"):
             await store.initialize()
 
     assert store.get("assistant") is None
